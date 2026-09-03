@@ -43,6 +43,7 @@ Open **Settings…** from the menu bar to configure:
 - **Hold to Scroll** — scrolling starts on middle-click and stops when you release it.
 - **Hold to Start** — hold middle-click for a configurable delay (default 200 ms), then scroll until any mouse button is pressed.
 - **Speed** — 25–300%, for anyone who wants the pointer to travel more or less before things move.
+- **Reverse vertical / horizontal** — invert either axis independently, so dragging down scrolls up.
 - Choose indicator style (light/dark), size (28–48 px), and scroll mode in Settings.
 
 The distance from the anchor maps to speed slightly faster than linearly, so the first few

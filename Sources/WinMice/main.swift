@@ -269,6 +269,8 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
     private func applySettings() {
         indicator.configure(darkMode: settings.darkMode, size: CGFloat(settings.markerSize))
         scroll.speed = ScrollEngine.baseSpeed * CGFloat(settings.scrollSpeedPercent) / 100
+        scroll.reverseVertical = settings.reverseScrollDirectionVertical
+        scroll.reverseHorizontal = settings.reverseScrollDirectionHorizontal
 
         navigation.enabled = settings.sideButtonsEnabled
         navigation.method = settings.navigationMethod
