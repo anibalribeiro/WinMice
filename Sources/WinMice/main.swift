@@ -1,5 +1,6 @@
 @preconcurrency import AppKit
 @preconcurrency import ApplicationServices
+import ScrollEngine
 
 @MainActor
 private final class WinMiceApp: NSObject, NSApplicationDelegate {

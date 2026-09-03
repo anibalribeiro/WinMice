@@ -11,29 +11,31 @@ import CoreGraphics
 ///   below roughly 1 px per tick it rounds slow drags away to nothing at all.
 /// - The response is slightly faster than linear, so the first few points past the dead zone stay
 ///   precise while the far end of the screen still scrolls quickly.
-struct ScrollEngine {
+public struct ScrollEngine {
     /// Pixels scrolled per tick one point past the dead zone, before the user's speed preference.
-    static let baseSpeed: CGFloat = 0.10
+    public static let baseSpeed: CGFloat = 0.10
 
     /// Pointer distance from the anchor, in points, that scrolls nothing.
-    var deadZone: CGFloat = 12
+    public var deadZone: CGFloat = 12
     /// Pixels scrolled per tick one point past the dead zone.
-    var speed = baseSpeed
+    public var speed = baseSpeed
     /// Exponent on the distance past the dead zone. Above 1 this buys fine control near the anchor
     /// at the cost of a steeper ramp further out.
-    var acceleration: CGFloat = 1.35
+    public var acceleration: CGFloat = 1.35
     /// Ceiling for one tick, so a pointer flung at the edge of the screen stays controllable.
-    var maxDeltaPerTick: CGFloat = 130
+    public var maxDeltaPerTick: CGFloat = 130
 
     private var remainder = CGVector.zero
 
-    mutating func reset() {
+    public init() {}
+
+    public mutating func reset() {
         remainder = .zero
     }
 
     /// - Parameter offset: Pointer position minus anchor, in AppKit coordinates (y grows upward).
     /// - Returns: Wheel deltas for this tick, or `nil` when there is nothing to scroll.
-    mutating func tick(offset: CGVector) -> (vertical: Int32, horizontal: Int32)? {
+    public mutating func tick(offset: CGVector) -> (vertical: Int32, horizontal: Int32)? {
         let distance = (offset.dx * offset.dx + offset.dy * offset.dy).squareRoot()
         guard distance > deadZone else {
             reset()
