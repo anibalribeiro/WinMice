@@ -1,6 +1,7 @@
 import Combine
 import Foundation
 import ServiceManagement
+import SideButtons
 
 /// How a middle-click starts and stops autoscrolling.
 enum ScrollMode: Hashable, CaseIterable, Identifiable {
@@ -114,13 +115,26 @@ final class AppSettings: ObservableObject {
     }
 
     var backButton: Int {
-        get { button(Key.backButton, swappedTo: NavigationDirection.forward.defaultButton) }
+        get { sideButtons.back }
         set { write(newValue, to: Key.backButton) }
     }
 
     var forwardButton: Int {
-        get { button(Key.forwardButton, swappedTo: NavigationDirection.back.defaultButton) }
+        get { sideButtons.forward }
         set { write(newValue, to: Key.forwardButton) }
+    }
+
+    /// Resolved as a pair, so neither direction can fall back onto the button the other uses.
+    private var sideButtons: SideButtonMapping {
+        SideButtons.resolve(
+            storedBack: stored(Key.backButton),
+            storedForward: stored(Key.forwardButton),
+            legacySwap: defaults[Key.swapSideButtons]
+        )
+    }
+
+    private func stored(_ preference: Preference<Int>) -> Int? {
+        defaults.hasValue(for: preference) ? defaults[preference] : nil
     }
 
     subscript(button direction: NavigationDirection) -> Int {
@@ -149,20 +163,8 @@ final class AppSettings: ObservableObject {
         self[button: direction] = button
     }
 
-    /// Any mouse button the event tap can see and does not already own. Left and right (0 and 1)
-    /// stay reserved so Set / Cancel clicks and the menu bar keep working, and the middle button
-    /// (2) belongs to autoscroll — mapping it would leave a scroll latched with no way to end it.
     nonisolated static func isAssignable(_ button: Int) -> Bool {
-        (3...31).contains(button)
-    }
-
-    private func button(_ preference: Preference<Int>, swappedTo swapped: Int) -> Int {
-        let stored = defaults.hasValue(for: preference)
-            ? defaults[preference]
-            : (defaults[Key.swapSideButtons] ? swapped : preference.defaultValue)
-        // A button an older build let through but this one reserves falls back to the default, so
-        // the mapping settings shows is always the one actually in effect.
-        return Self.isAssignable(stored) ? stored : preference.defaultValue
+        SideButtons.isAssignable(button)
     }
 
     var triggerOnMouseDown: Bool {
