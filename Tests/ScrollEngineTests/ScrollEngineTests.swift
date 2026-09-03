@@ -63,6 +63,28 @@ final class ScrollEngineTests: XCTestCase {
         XCTAssertEqual(reversedDelta?.vertical, plainDelta.map { -$0.vertical })
     }
 
+    func testReverseHorizontalScrollsLeftWhenDraggingRight() {
+        var engine = ScrollEngine()
+        engine.reverseHorizontal = true
+
+        let delta = engine.tick(offset: CGVector(dx: far, dy: 0))
+
+        XCTAssertGreaterThan(delta?.horizontal ?? 0, 0)
+    }
+
+    func testReverseHorizontalLeavesVerticalAlone() {
+        var reversed = ScrollEngine()
+        reversed.reverseHorizontal = true
+        var plain = ScrollEngine()
+        let drag = CGVector(dx: far, dy: -far)
+
+        let reversedDelta = reversed.tick(offset: drag)
+        let plainDelta = plain.tick(offset: drag)
+
+        XCTAssertEqual(reversedDelta?.vertical, plainDelta?.vertical)
+        XCTAssertEqual(reversedDelta?.horizontal, plainDelta.map { -$0.horizontal })
+    }
+
     func testOffsetInsideDeadZoneScrollsNothing() {
         var engine = ScrollEngine()
 
