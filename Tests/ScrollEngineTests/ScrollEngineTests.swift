@@ -85,6 +85,24 @@ final class ScrollEngineTests: XCTestCase {
         XCTAssertEqual(reversedDelta?.horizontal, plainDelta.map { -$0.horizontal })
     }
 
+    /// Reversing must flip the delta before the fractional remainder is added, not after. Flipping
+    /// the sum instead alternates the carryover's sign every tick, which stalls a slow drag at zero.
+    func testReversedSlowDragAccumulatesAcrossTicks() {
+        var engine = ScrollEngine()
+        engine.reverseVertical = true
+        // Just past the dead zone one tick is worth well under a pixel, so nothing scrolls until
+        // the remainder adds up over several ticks.
+        let crawl = CGVector(dx: 0, dy: -(engine.deadZone + 3))
+        XCTAssertNil(engine.tick(offset: crawl))
+
+        var total: Int32 = 0
+        for _ in 0..<60 {
+            total += engine.tick(offset: crawl)?.vertical ?? 0
+        }
+
+        XCTAssertGreaterThan(total, 0)
+    }
+
     func testOffsetInsideDeadZoneScrollsNothing() {
         var engine = ScrollEngine()
 
