@@ -1,4 +1,5 @@
 import ApplicationServices
+import SideButtons
 import SwipeGesturePoster
 
 enum NavigationMethod: String, Hashable, CaseIterable, Identifiable, PreferenceRepresentable {
@@ -28,12 +29,10 @@ enum NavigationDirection: Hashable, CaseIterable, Identifiable {
         }
     }
 
-    /// Button number this direction uses until the user maps another one. Buttons 0 through 2 are
-    /// the left, right, and middle buttons, so the side buttons start at 3.
     var defaultButton: Int {
         switch self {
-        case .back: 3
-        case .forward: 4
+        case .back: SideButtons.defaultBack
+        case .forward: SideButtons.defaultForward
         }
     }
 
@@ -58,8 +57,13 @@ final class NavigationController {
 
     private let keyboardSource = CGEventSource(stateID: .hidSystemState)
 
+    /// Checked in a fixed order rather than by searching the dictionary, whose iteration order
+    /// varies with the process's hash seed. `SideButtons.resolve` rules out one button driving both
+    /// directions, so the order only decides what happens if that guarantee is ever broken.
     func direction(for buttonNumber: Int64) -> NavigationDirection? {
-        buttons.first { $0.value == buttonNumber }?.key
+        if buttons[.back] == buttonNumber { return .back }
+        if buttons[.forward] == buttonNumber { return .forward }
+        return nil
     }
 
     func perform(_ direction: NavigationDirection) {
