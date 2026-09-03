@@ -48,6 +48,18 @@ struct ScrollingPane: View {
                 }
             }
 
+            Section("Direction") {
+                Toggle(isOn: $settings.reverseScrollDirectionVertical) {
+                    Text("Reverse vertical")
+                    Text("Drag down to scroll up instead of down.")
+                }
+
+                Toggle(isOn: $settings.reverseScrollDirectionHorizontal) {
+                    Text("Reverse horizontal")
+                    Text("Drag right to scroll left instead of right.")
+                }
+            }
+
             Section("Indicator") {
                 LabeledContent("Appearance") {
                     Picker("Appearance", selection: $settings.darkMode) {

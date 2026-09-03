@@ -37,6 +37,8 @@ final class AppSettings: ObservableObject {
         static let holdToLockMode = Preference("holdToLockMode", default: false)
         static let holdToStartDelayMs = Preference("holdToStartDelayMs", default: 200)
         static let scrollSpeedPercent = Preference("scrollSpeedPercent", default: 100)
+        static let reverseScrollDirectionVertical = Preference("reverseScrollDirectionVertical", default: false)
+        static let reverseScrollDirectionHorizontal = Preference("reverseScrollDirectionHorizontal", default: false)
         static let markerSize = Preference("markerSize", default: 32)
         static let sideButtonsEnabled = Preference("sideButtonsEnabled", default: true)
         static let navigationMethod = Preference("navigationMethod", default: NavigationMethod.swipe)
@@ -52,6 +54,8 @@ final class AppSettings: ObservableObject {
             holdToLockMode.key,
             holdToStartDelayMs.key,
             scrollSpeedPercent.key,
+            reverseScrollDirectionVertical.key,
+            reverseScrollDirectionHorizontal.key,
             markerSize.key,
             sideButtonsEnabled.key,
             navigationMethod.key,
@@ -82,6 +86,16 @@ final class AppSettings: ObservableObject {
     var scrollSpeedPercent: Int {
         get { Self.clamp(defaults[Key.scrollSpeedPercent], to: Self.scrollSpeedRange, step: Self.scrollSpeedStep) }
         set { write(Self.clamp(newValue, to: Self.scrollSpeedRange, step: Self.scrollSpeedStep), to: Key.scrollSpeedPercent) }
+    }
+
+    var reverseScrollDirectionVertical: Bool {
+        get { defaults[Key.reverseScrollDirectionVertical] }
+        set { write(newValue, to: Key.reverseScrollDirectionVertical) }
+    }
+
+    var reverseScrollDirectionHorizontal: Bool {
+        get { defaults[Key.reverseScrollDirectionHorizontal] }
+        set { write(newValue, to: Key.reverseScrollDirectionHorizontal) }
     }
 
     var markerSize: Int {
