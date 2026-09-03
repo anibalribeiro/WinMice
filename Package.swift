@@ -21,9 +21,16 @@ let package = Package(
                 .linkedFramework("ApplicationServices")
             ]
         ),
+        .target(
+            name: "ScrollEngine",
+            path: "Sources/ScrollEngine",
+            swiftSettings: [
+                .unsafeFlags(["-warnings-as-errors"])
+            ]
+        ),
         .executableTarget(
             name: "WinMice",
-            dependencies: ["SwipeGesturePoster"],
+            dependencies: ["SwipeGesturePoster", "ScrollEngine"],
             path: "Sources/WinMice",
             swiftSettings: [
                 .unsafeFlags(["-warnings-as-errors"])
@@ -42,6 +49,11 @@ let package = Package(
             linkerSettings: [
                 .linkedFramework("AppKit")
             ]
+        ),
+        .testTarget(
+            name: "ScrollEngineTests",
+            dependencies: ["ScrollEngine"],
+            path: "Tests/ScrollEngineTests"
         )
     ]
 )
