@@ -16,6 +16,17 @@ final class SideButtonsTests: XCTestCase {
         XCTAssertEqual(mapping, SideButtonMapping(back: 4, forward: 3))
     }
 
+    /// The flag only ever applied to a direction the user had never mapped. A stored value this
+    /// build reserves is not the same thing as no value at all: it falls back to the direction's
+    /// own default, with the swap ignored. Here back is mapped to 21 by hand and forward holds a
+    /// button an intermediate build allowed, so forward must land on its own default of 4 rather
+    /// than the swapped 3.
+    func testLegacySwapDoesNotApplyToStoredButUnusableValues() {
+        let mapping = SideButtons.resolve(storedBack: 21, storedForward: 2, legacySwap: true)
+
+        XCTAssertEqual(mapping, SideButtonMapping(back: 21, forward: 4))
+    }
+
     func testStoredButtonsAreKept() {
         let mapping = SideButtons.resolve(storedBack: 7, storedForward: 9, legacySwap: false)
 
@@ -26,7 +37,7 @@ final class SideButtonsTests: XCTestCase {
         // The middle button belongs to autoscroll, so a build that once allowed it must not win.
         let mapping = SideButtons.resolve(storedBack: 2, storedForward: nil, legacySwap: false)
 
-        XCTAssertFalse(mapping.back == 2)
+        XCTAssertNotEqual(mapping.back, 2)
         XCTAssertTrue(SideButtons.isAssignable(mapping.back))
     }
 
@@ -53,12 +64,22 @@ final class SideButtonsTests: XCTestCase {
 
     /// Nothing in the app can write this, since `assign` trades places instead of mapping a button
     /// twice, but a hand-edited defaults domain can.
-    func testTwoStoredButtonsThatMatchAreSeparated() {
+    /// Back keeps the button, so the outcome does not depend on which direction is read first.
+    /// `NavigationController.direction(for:)` checks back first for the same reason.
+    func testTwoStoredButtonsThatMatchResolveInFavorOfBack() {
         let mapping = SideButtons.resolve(storedBack: 6, storedForward: 6, legacySwap: false)
 
-        XCTAssertNotEqual(mapping.back, mapping.forward)
-        XCTAssertTrue(SideButtons.isAssignable(mapping.back))
+        XCTAssertEqual(mapping.back, 6)
+        XCTAssertNotEqual(mapping.forward, 6)
         XCTAssertTrue(SideButtons.isAssignable(mapping.forward))
+    }
+
+    /// `fallback` steps aside to the other default when the preferred one is taken, which only
+    /// yields a free button while the two defaults differ.
+    func testTheTwoDefaultsDiffer() {
+        XCTAssertNotEqual(SideButtons.defaultBack, SideButtons.defaultForward)
+        XCTAssertTrue(SideButtons.isAssignable(SideButtons.defaultBack))
+        XCTAssertTrue(SideButtons.isAssignable(SideButtons.defaultForward))
     }
 
     /// The invariant the whole type owes its callers: whatever is stored, one button never drives

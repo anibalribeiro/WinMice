@@ -48,15 +48,11 @@ public enum SideButtons {
         }
 
         let back = mappedBack ?? fallback(
-            ownDefault: defaultBack,
-            otherDefault: defaultForward,
-            legacySwap: legacySwap,
+            preferred: preference(ownDefault: defaultBack, wasStored: storedBack != nil, legacySwap: legacySwap),
             taken: mappedForward
         )
         let forward = mappedForward ?? fallback(
-            ownDefault: defaultForward,
-            otherDefault: defaultBack,
-            legacySwap: legacySwap,
+            preferred: preference(ownDefault: defaultForward, wasStored: storedForward != nil, legacySwap: legacySwap),
             taken: back
         )
         return SideButtonMapping(back: back, forward: forward)
@@ -69,20 +65,22 @@ public enum SideButtons {
         return stored
     }
 
-    /// The button to use for a direction the user has not mapped, avoiding the one already taken.
-    private static func fallback(
-        ownDefault: Int,
-        otherDefault: Int,
-        legacySwap: Bool,
-        taken: Int?
-    ) -> Int {
-        // The superseded flag swapped the pair, so an install still relying on it prefers the
-        // opposite default.
-        let preferred = legacySwap ? otherDefault : ownDefault
-        let second = legacySwap ? ownDefault : otherDefault
-        // The full range is a backstop: with 29 assignable buttons and at most one taken, some
-        // button is always free, so this can never fail to find one.
-        let candidates = [preferred, second] + assignable
-        return candidates.first { $0 != taken } ?? preferred
+    /// The button a direction would use if nothing else were competing for it.
+    ///
+    /// The superseded flag swapped the pair, but only for a direction the user had never mapped.
+    /// A stored value this build reserves is not the same as no value at all: it falls back to the
+    /// direction's own default with the swap ignored, which is what it has always done.
+    private static func preference(ownDefault: Int, wasStored: Bool, legacySwap: Bool) -> Int {
+        legacySwap && !wasStored ? other(than: ownDefault) : ownDefault
+    }
+
+    /// Steps aside when the preferred button is already taken. Total because the two defaults
+    /// differ, so the pair always holds one button that is not the taken one.
+    private static func fallback(preferred: Int, taken: Int?) -> Int {
+        preferred == taken ? other(than: preferred) : preferred
+    }
+
+    private static func other(than button: Int) -> Int {
+        button == defaultBack ? defaultForward : defaultBack
     }
 }

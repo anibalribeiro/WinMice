@@ -59,7 +59,8 @@ final class NavigationController {
 
     /// Checked in a fixed order rather than by searching the dictionary, whose iteration order
     /// varies with the process's hash seed. `SideButtons.resolve` rules out one button driving both
-    /// directions, so the order only decides what happens if that guarantee is ever broken.
+    /// directions, so the order only decides what happens if that guarantee is ever broken — and
+    /// back comes first to match the tie-break `resolve` uses, so the two agree even then.
     func direction(for buttonNumber: Int64) -> NavigationDirection? {
         if buttons[.back] == buttonNumber { return .back }
         if buttons[.forward] == buttonNumber { return .forward }
