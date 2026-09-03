@@ -19,6 +19,8 @@ public struct ScrollEngine {
     public var deadZone: CGFloat = 12
     /// Pixels scrolled per tick one point past the dead zone.
     public var speed = baseSpeed
+    /// Inverts the vertical wheel delta, so dragging down scrolls up.
+    public var reverseVertical = false
     /// Exponent on the distance past the dead zone. Above 1 this buys fine control near the anchor
     /// at the cost of a steeper ramp further out.
     public var acceleration: CGFloat = 1.35
@@ -45,7 +47,7 @@ public struct ScrollEngine {
         let magnitude = min(speed * pow(distance - deadZone, acceleration), maxDeltaPerTick)
         // Positive wheel1 scrolls up and positive wheel2 scrolls left, so the vertical offset maps
         // straight across and the horizontal one inverts.
-        let vertical = magnitude * offset.dy / distance + remainder.dy
+        let vertical = (reverseVertical ? -1 : 1) * magnitude * offset.dy / distance + remainder.dy
         let horizontal = -magnitude * offset.dx / distance + remainder.dx
 
         let steps = CGVector(dx: horizontal.rounded(.towardZero), dy: vertical.rounded(.towardZero))
