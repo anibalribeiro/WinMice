@@ -28,9 +28,16 @@ let package = Package(
                 .unsafeFlags(["-warnings-as-errors"])
             ]
         ),
+        .target(
+            name: "SideButtons",
+            path: "Sources/SideButtons",
+            swiftSettings: [
+                .unsafeFlags(["-warnings-as-errors"])
+            ]
+        ),
         .executableTarget(
             name: "WinMice",
-            dependencies: ["SwipeGesturePoster", "ScrollEngine"],
+            dependencies: ["SwipeGesturePoster", "ScrollEngine", "SideButtons"],
             path: "Sources/WinMice",
             swiftSettings: [
                 .unsafeFlags(["-warnings-as-errors"])
@@ -54,6 +61,11 @@ let package = Package(
             name: "ScrollEngineTests",
             dependencies: ["ScrollEngine"],
             path: "Tests/ScrollEngineTests"
+        ),
+        .testTarget(
+            name: "SideButtonsTests",
+            dependencies: ["SideButtons"],
+            path: "Tests/SideButtonsTests"
         )
     ]
 )
