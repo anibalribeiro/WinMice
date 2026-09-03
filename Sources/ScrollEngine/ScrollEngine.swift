@@ -25,9 +25,9 @@ public struct ScrollEngine {
     public var reverseHorizontal = false
     /// Exponent on the distance past the dead zone. Above 1 this buys fine control near the anchor
     /// at the cost of a steeper ramp further out.
-    public var acceleration: CGFloat = 1.35
+    var acceleration: CGFloat = 1.35
     /// Ceiling for one tick, so a pointer flung at the edge of the screen stays controllable.
-    public var maxDeltaPerTick: CGFloat = 130
+    var maxDeltaPerTick: CGFloat = 130
 
     private var remainder = CGVector.zero
 
@@ -52,7 +52,7 @@ public struct ScrollEngine {
         // of that, before the remainder is added, so the carryover stays in the same sign
         // convention as the deltas it accumulates toward.
         let vertical = (reverseVertical ? -1 : 1) * magnitude * offset.dy / distance + remainder.dy
-        let horizontal = (reverseHorizontal ? 1 : -1) * magnitude * offset.dx / distance + remainder.dx
+        let horizontal = -(reverseHorizontal ? -1 : 1) * magnitude * offset.dx / distance + remainder.dx
 
         let steps = CGVector(dx: horizontal.rounded(.towardZero), dy: vertical.rounded(.towardZero))
         remainder = CGVector(dx: horizontal - steps.dx, dy: vertical - steps.dy)

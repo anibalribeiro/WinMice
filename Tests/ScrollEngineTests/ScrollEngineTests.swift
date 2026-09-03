@@ -50,17 +50,17 @@ final class ScrollEngineTests: XCTestCase {
         XCTAssertGreaterThan(delta?.vertical ?? 0, 0)
     }
 
-    func testReverseVerticalLeavesHorizontalAlone() {
+    func testReverseVerticalLeavesHorizontalAlone() throws {
         var reversed = ScrollEngine()
         reversed.reverseVertical = true
         var plain = ScrollEngine()
         let drag = CGVector(dx: far, dy: -far)
 
-        let reversedDelta = reversed.tick(offset: drag)
-        let plainDelta = plain.tick(offset: drag)
+        let reversedDelta = try XCTUnwrap(reversed.tick(offset: drag))
+        let plainDelta = try XCTUnwrap(plain.tick(offset: drag))
 
-        XCTAssertEqual(reversedDelta?.horizontal, plainDelta?.horizontal)
-        XCTAssertEqual(reversedDelta?.vertical, plainDelta.map { -$0.vertical })
+        XCTAssertEqual(reversedDelta.horizontal, plainDelta.horizontal)
+        XCTAssertEqual(reversedDelta.vertical, -plainDelta.vertical)
     }
 
     func testReverseHorizontalScrollsLeftWhenDraggingRight() {
@@ -72,17 +72,31 @@ final class ScrollEngineTests: XCTestCase {
         XCTAssertGreaterThan(delta?.horizontal ?? 0, 0)
     }
 
-    func testReverseHorizontalLeavesVerticalAlone() {
+    func testReverseHorizontalLeavesVerticalAlone() throws {
         var reversed = ScrollEngine()
         reversed.reverseHorizontal = true
         var plain = ScrollEngine()
         let drag = CGVector(dx: far, dy: -far)
 
-        let reversedDelta = reversed.tick(offset: drag)
-        let plainDelta = plain.tick(offset: drag)
+        let reversedDelta = try XCTUnwrap(reversed.tick(offset: drag))
+        let plainDelta = try XCTUnwrap(plain.tick(offset: drag))
 
-        XCTAssertEqual(reversedDelta?.vertical, plainDelta?.vertical)
-        XCTAssertEqual(reversedDelta?.horizontal, plainDelta.map { -$0.horizontal })
+        XCTAssertEqual(reversedDelta.vertical, plainDelta.vertical)
+        XCTAssertEqual(reversedDelta.horizontal, -plainDelta.horizontal)
+    }
+
+    func testReversingBothAxesFlipsBoth() throws {
+        var reversed = ScrollEngine()
+        reversed.reverseVertical = true
+        reversed.reverseHorizontal = true
+        var plain = ScrollEngine()
+        let drag = CGVector(dx: far, dy: -far)
+
+        let reversedDelta = try XCTUnwrap(reversed.tick(offset: drag))
+        let plainDelta = try XCTUnwrap(plain.tick(offset: drag))
+
+        XCTAssertEqual(reversedDelta.vertical, -plainDelta.vertical)
+        XCTAssertEqual(reversedDelta.horizontal, -plainDelta.horizontal)
     }
 
     /// Reversing must flip the delta before the fractional remainder is added, not after. Flipping
