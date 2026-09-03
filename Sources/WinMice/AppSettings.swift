@@ -114,12 +114,14 @@ final class AppSettings: ObservableObject {
         set { write(newValue, to: Key.navigationMethod) }
     }
 
-    var backButton: Int {
+    /// Private because the setters take a button without validating it. `assign(_:to:)` is the way
+    /// in: it rejects buttons the tap cannot claim and keeps the two directions on separate ones.
+    private var backButton: Int {
         get { sideButtons.back }
         set { write(newValue, to: Key.backButton) }
     }
 
-    var forwardButton: Int {
+    private var forwardButton: Int {
         get { sideButtons.forward }
         set { write(newValue, to: Key.forwardButton) }
     }
