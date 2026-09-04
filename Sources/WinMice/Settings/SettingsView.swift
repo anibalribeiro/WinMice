@@ -5,6 +5,7 @@ struct SettingsView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var permissions: PermissionsMonitor
     @ObservedObject var recorder: ButtonRecorder
+    @ObservedObject var updater: UpdateController
 
     @State private var pane: SettingsPane = .scrolling
 
@@ -88,7 +89,7 @@ struct SettingsView: View {
         case .buttons:
             ButtonsPane(settings: settings, recorder: recorder)
         case .general:
-            GeneralPane(settings: settings)
+            GeneralPane(settings: settings, updater: updater)
         case .permissions:
             PermissionsPane(permissions: permissions)
         case .about:

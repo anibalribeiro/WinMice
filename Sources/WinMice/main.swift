@@ -79,7 +79,8 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
         settingsController = SettingsWindowController(
             settings: settings,
             permissions: permissions,
-            recorder: recorder
+            recorder: recorder,
+            updater: updater
         )
 
         configureMainMenu()
