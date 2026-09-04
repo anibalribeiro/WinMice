@@ -45,6 +45,14 @@ let package = Package(
                 .unsafeFlags(["-warnings-as-errors"])
             ]
         ),
+        .target(
+            name: "Preferences",
+            dependencies: ["SideButtons"],
+            path: "Sources/Preferences",
+            swiftSettings: [
+                .unsafeFlags(["-warnings-as-errors"])
+            ]
+        ),
         .executableTarget(
             name: "WinMice",
             dependencies: [
@@ -52,6 +60,7 @@ let package = Package(
                 "ScrollEngine",
                 "SideButtons",
                 "ButtonGate",
+                "Preferences",
                 .product(name: "Sparkle", package: "Sparkle")
             ],
             path: "Sources/WinMice",
@@ -94,6 +103,11 @@ let package = Package(
             name: "ButtonGateTests",
             dependencies: ["ButtonGate"],
             path: "Tests/ButtonGateTests"
+        ),
+        .testTarget(
+            name: "PreferencesTests",
+            dependencies: ["Preferences"],
+            path: "Tests/PreferencesTests"
         )
     ]
 )

@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import Foundation
+import Preferences
 
 /// Lets the settings window map a mouse button by pressing it. While listening, the session event
 /// tap plus local and global `NSEvent` monitors all feed presses in, so whatever button the user

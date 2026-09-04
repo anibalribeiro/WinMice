@@ -1,6 +1,7 @@
 @preconcurrency import AppKit
 @preconcurrency import ApplicationServices
 import ButtonGate
+import Preferences
 import ScrollEngine
 
 @MainActor

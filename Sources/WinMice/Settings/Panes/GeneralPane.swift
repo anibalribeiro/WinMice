@@ -1,4 +1,5 @@
 import AppKit
+import Preferences
 import SwiftUI
 
 struct GeneralPane: View {

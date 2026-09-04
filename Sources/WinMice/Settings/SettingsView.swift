@@ -1,3 +1,4 @@
+import Preferences
 import SwiftUI
 
 /// Sidebar plus detail layout, in the shape of System Settings.

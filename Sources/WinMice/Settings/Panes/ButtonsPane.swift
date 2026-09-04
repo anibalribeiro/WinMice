@@ -1,3 +1,4 @@
+import Preferences
 import SwiftUI
 
 struct ButtonsPane: View {
