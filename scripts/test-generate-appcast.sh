@@ -63,4 +63,68 @@ if (
   exit 1
 fi
 
+# sign_update discovery must pick the EdDSA tool by name, not by find's
+# traversal order, and must never fall back to the deprecated DSA script.
+DISCOVERY_ROOT="$TMP/discovery"
+mkdir -p "$DISCOVERY_ROOT/project/docs" "$DISCOVERY_ROOT/project/dist" "$DISCOVERY_ROOT/project/.build"
+cp "$ROOT/docs/appcast-template.xml" "$DISCOVERY_ROOT/project/docs/appcast-template.xml"
+printf 'zip contents\n' > "$DISCOVERY_ROOT/project/dist/WinMice-9.9.9.zip"
+printf -- '- Discovery case.\n' > "$DISCOVERY_ROOT/project/docs/changelog-9.9.9.md"
+
+mkdir -p "$DISCOVERY_ROOT/project/.build/artifacts/sparkle/Sparkle/bin/old_dsa_scripts"
+
+cat > "$DISCOVERY_ROOT/project/.build/artifacts/sparkle/Sparkle/bin/sign_update" <<'EOF'
+#!/bin/sh
+printf 'correct-tool-ran\n' > "$TEST_STATE/discovery_marker"
+printf 'sparkle:edSignature="ZGlzY292ZXJ5" length="99"\n'
+EOF
+
+cat > "$DISCOVERY_ROOT/project/.build/artifacts/sparkle/Sparkle/bin/old_dsa_scripts/sign_update" <<'EOF'
+#!/bin/sh
+printf 'dsa-tool-ran\n' > "$TEST_STATE/discovery_marker"
+echo "old_dsa_scripts/sign_update takes positional args, not -f" >&2
+exit 1
+EOF
+
+chmod +x "$DISCOVERY_ROOT/project/.build/artifacts/sparkle/Sparkle/bin/sign_update" \
+         "$DISCOVERY_ROOT/project/.build/artifacts/sparkle/Sparkle/bin/old_dsa_scripts/sign_update"
+
+if ! (
+  cd "$DISCOVERY_ROOT/project"
+  env -u SPARKLE_SIGN_UPDATE "$ROOT/scripts/generate-appcast.sh" 9.9.9 dist/WinMice-9.9.9.zip docs/changelog-9.9.9.md
+) >"$TMP/discovery-stdout" 2>"$TMP/discovery-stderr"; then
+  printf 'generate-appcast unexpectedly failed while discovering sign_update\n' >&2
+  cat "$TMP/discovery-stderr" >&2
+  exit 1
+fi
+
+grep -q 'correct-tool-ran' "$TMP/discovery_marker"
+grep -q 'sparkle:edSignature="ZGlzY292ZXJ5"' "$DISCOVERY_ROOT/project/dist/appcast.xml"
+rm -f "$TMP/discovery_marker"
+
+# With no non-DSA sign_update present, discovery must fail loudly rather than
+# silently falling back to the DSA script or proceeding with no tool at all.
+ZERO_ROOT="$TMP/discovery-zero"
+mkdir -p "$ZERO_ROOT/project/docs" "$ZERO_ROOT/project/dist" "$ZERO_ROOT/project/.build"
+cp "$ROOT/docs/appcast-template.xml" "$ZERO_ROOT/project/docs/appcast-template.xml"
+printf 'zip contents\n' > "$ZERO_ROOT/project/dist/WinMice-9.9.9.zip"
+printf -- '- Zero-match case.\n' > "$ZERO_ROOT/project/docs/changelog-9.9.9.md"
+
+mkdir -p "$ZERO_ROOT/project/.build/artifacts/sparkle/Sparkle/bin/old_dsa_scripts"
+cat > "$ZERO_ROOT/project/.build/artifacts/sparkle/Sparkle/bin/old_dsa_scripts/sign_update" <<'EOF'
+#!/bin/sh
+exit 1
+EOF
+chmod +x "$ZERO_ROOT/project/.build/artifacts/sparkle/Sparkle/bin/old_dsa_scripts/sign_update"
+
+if (
+  cd "$ZERO_ROOT/project"
+  env -u SPARKLE_SIGN_UPDATE "$ROOT/scripts/generate-appcast.sh" 9.9.9 dist/WinMice-9.9.9.zip docs/changelog-9.9.9.md
+) >"$TMP/zero-stdout" 2>"$TMP/zero-stderr"; then
+  echo "expected generate-appcast to fail when no EdDSA sign_update is found" >&2
+  exit 1
+fi
+
+grep -q 'expected exactly one sign_update under .build/artifacts, found 0' "$TMP/zero-stderr"
+
 printf 'generate-appcast test passed\n'

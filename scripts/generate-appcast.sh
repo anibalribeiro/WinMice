@@ -17,12 +17,20 @@ OUT="dist/appcast.xml"
 # resolved, so there is nothing extra to download.
 SIGN_UPDATE="${SPARKLE_SIGN_UPDATE:-}"
 if [ -z "$SIGN_UPDATE" ]; then
-  SIGN_UPDATE=$(find .build/artifacts -type f -name sign_update | head -n 1)
+  # Sparkle ships two sign_update binaries: the EdDSA one in bin/, and a
+  # deprecated DSA script in bin/old_dsa_scripts/. Exclude the latter so the
+  # right tool is chosen by name rather than by find's traversal order, and
+  # refuse to guess if the layout ever changes.
+  MATCHES=$(find .build/artifacts -type f -name sign_update -not -path '*old_dsa_scripts*')
+  COUNT=$(printf '%s\n' "$MATCHES" | grep -c . || true)
+  if [ "$COUNT" -ne 1 ]; then
+    echo "expected exactly one sign_update under .build/artifacts, found $COUNT" >&2
+    printf '%s\n' "$MATCHES" >&2
+    echo "run 'swift build -c release' first, or set SPARKLE_SIGN_UPDATE" >&2
+    exit 1
+  fi
+  SIGN_UPDATE="$MATCHES"
 fi
-[ -n "$SIGN_UPDATE" ] || {
-  echo "could not find sign_update under .build/artifacts — run 'swift build -c release' first" >&2
-  exit 1
-}
 
 # The key must be passed as a file, not inline: sign_update defaults to the login
 # Keychain, which does not exist on a CI runner, and an inline key would show up
