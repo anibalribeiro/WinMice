@@ -112,9 +112,17 @@ jobs:
         run: ./scripts/verify-notarized-app.sh dist/WinMice.app
 
       - name: Package zip
+        id: pkg
         env:
           VERSION: ${{ steps.ver.outputs.version }}
-        run: ./scripts/package-release.sh "$VERSION"
+        run: |
+          ./scripts/package-release.sh "$VERSION"
+          echo "zip=dist/WinMice-${VERSION}.zip" >> "$GITHUB_OUTPUT"
+
+      - name: Verify packaged zip
+        env:
+          ZIP: ${{ steps.pkg.outputs.zip }}
+        run: ./scripts/verify-packaged-zip.sh "$ZIP"
 
       - name: Install create-dmg
         run: |
