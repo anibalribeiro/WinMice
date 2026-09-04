@@ -198,6 +198,13 @@ copies, and the Homebrew cask is left alone. Real releases come from tag pushes.
    ./scripts/package-dmg.sh 1.1.0
    ```
 
+   The release workflow's `Test` step now runs `swift test` and the
+   `test-*.sh` script suite itself, before any signing secret is imported —
+   a tag on a commit that never went green fails there in seconds instead of
+   producing a signed, notarized release. This local run is therefore a
+   convenience that surfaces failures before you push a tag, not the only
+   gate.
+
 4. Commit/push any pending release notes or docs on `main`.
 
 5. Tag and push:
