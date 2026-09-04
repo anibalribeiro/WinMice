@@ -1,9 +1,13 @@
 #!/bin/sh
 set -eu
 
-VERSION="${1:?usage: generate-appcast.sh <version> <zip> <changelog.md>}"
-ZIP="${2:?usage: generate-appcast.sh <version> <zip> <changelog.md>}"
-CHANGELOG="${3:?usage: generate-appcast.sh <version> <zip> <changelog.md>}"
+VERSION="${1:?usage: generate-appcast.sh <version> <zip> <changelog.md> <tag>}"
+ZIP="${2:?usage: generate-appcast.sh <version> <zip> <changelog.md> <tag>}"
+CHANGELOG="${3:?usage: generate-appcast.sh <version> <zip> <changelog.md> <tag>}"
+# The tag is required rather than derived from the version: releases are not
+# always tagged v<version>, and an enclosure URL built from the wrong tag sends
+# every user to a 404.
+TAG="${4:?usage: generate-appcast.sh <version> <zip> <changelog.md> <tag>}"
 KEY_FILE="${SPARKLE_ED_KEY_FILE:?SPARKLE_ED_KEY_FILE must point at the exported EdDSA private key}"
 TEMPLATE="docs/appcast-template.xml"
 OUT="dist/appcast.xml"
@@ -45,6 +49,7 @@ PUBDATE=$(LC_ALL=C date -u '+%a, %d %b %Y %H:%M:%S +0000')
 
 mkdir -p dist
 awk -v version="$VERSION" \
+    -v tag="$TAG" \
     -v sig="$ED_SIGNATURE" \
     -v len="$LENGTH" \
     -v pubdate="$PUBDATE" \
@@ -56,6 +61,7 @@ awk -v version="$VERSION" \
   }
   {
     gsub(/\{\{VERSION\}\}/, version)
+    gsub(/\{\{TAG\}\}/, tag)
     gsub(/\{\{ED_SIGNATURE\}\}/, sig)
     gsub(/\{\{LENGTH\}\}/, len)
     gsub(/\{\{PUBDATE\}\}/, pubdate)

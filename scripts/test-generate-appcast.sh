@@ -24,7 +24,7 @@ export SPARKLE_ED_KEY_FILE="$TMP/key"
 
 if ! (
   cd "$TMP/project"
-  "$ROOT/scripts/generate-appcast.sh" 9.9.9 dist/WinMice-9.9.9.zip docs/changelog-9.9.9.md
+  "$ROOT/scripts/generate-appcast.sh" 9.9.9 dist/WinMice-9.9.9.zip docs/changelog-9.9.9.md v9.9.9
 ) >"$TMP/stdout" 2>"$TMP/stderr"; then
   printf 'generate-appcast unexpectedly failed\n' >&2
   cat "$TMP/stderr" >&2
@@ -57,9 +57,37 @@ fi
 # Missing changelog must fail rather than emit an appcast with empty notes.
 if (
   cd "$TMP/project"
-  "$ROOT/scripts/generate-appcast.sh" 9.9.9 dist/WinMice-9.9.9.zip docs/nope.md
+  "$ROOT/scripts/generate-appcast.sh" 9.9.9 dist/WinMice-9.9.9.zip docs/nope.md v9.9.9
 ) >/dev/null 2>&1; then
   echo "expected generate-appcast to fail on a missing changelog" >&2
+  exit 1
+fi
+
+# The download URL must come from the tag the release is actually published
+# under, not from the version. A workflow_dispatch run tags manual-<version>,
+# and an appcast pointing at v<version> would send every user to a 404.
+if ! (
+  cd "$TMP/project"
+  "$ROOT/scripts/generate-appcast.sh" 9.9.9 dist/WinMice-9.9.9.zip docs/changelog-9.9.9.md manual-9.9.9
+) >/dev/null 2>"$TMP/tag-stderr"; then
+  printf 'generate-appcast failed for a manual- tag\n' >&2
+  cat "$TMP/tag-stderr" >&2
+  exit 1
+fi
+
+grep -q 'releases/download/manual-9.9.9/WinMice-9.9.9.zip' "$OUT"
+if grep -q 'releases/download/v9.9.9/' "$OUT"; then
+  echo "enclosure URL ignored the tag and used the version instead" >&2
+  exit 1
+fi
+
+# The tag must be supplied explicitly. Defaulting it to v<version> is what
+# allowed the mismatch in the first place, so absence is an error.
+if (
+  cd "$TMP/project"
+  "$ROOT/scripts/generate-appcast.sh" 9.9.9 dist/WinMice-9.9.9.zip docs/changelog-9.9.9.md
+) >/dev/null 2>&1; then
+  echo "expected generate-appcast to require an explicit tag" >&2
   exit 1
 fi
 
@@ -91,7 +119,7 @@ chmod +x "$DISCOVERY_ROOT/project/.build/artifacts/sparkle/Sparkle/bin/sign_upda
 
 if ! (
   cd "$DISCOVERY_ROOT/project"
-  env -u SPARKLE_SIGN_UPDATE "$ROOT/scripts/generate-appcast.sh" 9.9.9 dist/WinMice-9.9.9.zip docs/changelog-9.9.9.md
+  env -u SPARKLE_SIGN_UPDATE "$ROOT/scripts/generate-appcast.sh" 9.9.9 dist/WinMice-9.9.9.zip docs/changelog-9.9.9.md v9.9.9
 ) >"$TMP/discovery-stdout" 2>"$TMP/discovery-stderr"; then
   printf 'generate-appcast unexpectedly failed while discovering sign_update\n' >&2
   cat "$TMP/discovery-stderr" >&2
@@ -119,7 +147,7 @@ chmod +x "$ZERO_ROOT/project/.build/artifacts/sparkle/Sparkle/bin/old_dsa_script
 
 if (
   cd "$ZERO_ROOT/project"
-  env -u SPARKLE_SIGN_UPDATE "$ROOT/scripts/generate-appcast.sh" 9.9.9 dist/WinMice-9.9.9.zip docs/changelog-9.9.9.md
+  env -u SPARKLE_SIGN_UPDATE "$ROOT/scripts/generate-appcast.sh" 9.9.9 dist/WinMice-9.9.9.zip docs/changelog-9.9.9.md v9.9.9
 ) >"$TMP/zero-stdout" 2>"$TMP/zero-stderr"; then
   echo "expected generate-appcast to fail when no EdDSA sign_update is found" >&2
   exit 1

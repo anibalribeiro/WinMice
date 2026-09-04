@@ -35,6 +35,10 @@ jobs:
             VERSION="${DISPATCH_VERSION}"
             TAG="manual-${VERSION}"
             PUBLISH="${{ inputs.publish }}"
+            # releases/latest/download/appcast.xml is the feed every installed
+            # copy reads. A manual run must land as a prerelease so it can never
+            # become "latest" and offer a test build to all users.
+            PRERELEASE=true
           else
             TAG="${GITHUB_REF_NAME}"
             case "$TAG" in
@@ -42,6 +46,7 @@ jobs:
               *) echo "Tag must start with v" >&2; exit 1 ;;
             esac
             PUBLISH=true
+            PRERELEASE=false
           fi
           case "$VERSION" in
             "") echo "Version must be non-empty" >&2; exit 1 ;;
@@ -49,6 +54,7 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "publish=$PUBLISH" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
 
       - name: Require a changelog for this version
         env:
@@ -187,6 +193,7 @@ jobs:
       - name: Generate appcast
         env:
           VERSION: ${{ steps.ver.outputs.version }}
+          TAG: ${{ steps.ver.outputs.tag }}
           ZIP: ${{ steps.sum.outputs.zip }}
           SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
         run: |
@@ -194,7 +201,7 @@ jobs:
           umask 077
           printf '%s' "$SPARKLE_ED_PRIVATE_KEY" > "$KEY_FILE"
           SPARKLE_ED_KEY_FILE="$KEY_FILE" \
-            ./scripts/generate-appcast.sh "$VERSION" "$ZIP" "docs/changelog/${VERSION}.md"
+            ./scripts/generate-appcast.sh "$VERSION" "$ZIP" "docs/changelog/${VERSION}.md" "$TAG"
           rm -f "$KEY_FILE"
 
       - name: Upload workflow artifacts (dry run / debugging)
@@ -222,9 +229,15 @@ jobs:
           VERSION: ${{ steps.ver.outputs.version }}
           ZIP: ${{ steps.sum.outputs.zip }}
           DMG: ${{ steps.sum.outputs.dmg }}
+          PRERELEASE: ${{ steps.ver.outputs.prerelease }}
         run: |
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$ZIP" "$DMG" dist/appcast.xml --clobber
+          elif [ "$PRERELEASE" = "true" ]; then
+            gh release create "$TAG" "$ZIP" "$DMG" dist/appcast.xml \
+              --title "WinMice $VERSION" \
+              --notes-file /tmp/release-notes.md \
+              --prerelease
           else
             gh release create "$TAG" "$ZIP" "$DMG" dist/appcast.xml \
               --title "WinMice $VERSION" \
@@ -233,7 +246,10 @@ jobs:
 
       - name: Update Homebrew tap
         id: tap
-        if: steps.ver.outputs.publish == 'true'
+        # Skipped for manual runs: the cask URL is built from v<version>, which
+        # does not exist under a manual-<version> tag, so bumping it would point
+        # every Homebrew user at a 404.
+        if: steps.ver.outputs.publish == 'true' && steps.ver.outputs.prerelease != 'true'
         continue-on-error: true
         env:
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}

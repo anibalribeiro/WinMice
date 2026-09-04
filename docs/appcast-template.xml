@@ -16,7 +16,7 @@
       <description sparkle:format="markdown"><![CDATA[
 {{CHANGES}}
       ]]></description>
-      <enclosure url="https://github.com/anibalribeiro/WinMice/releases/download/v{{VERSION}}/WinMice-{{VERSION}}.zip"
+      <enclosure url="https://github.com/anibalribeiro/WinMice/releases/download/{{TAG}}/WinMice-{{VERSION}}.zip"
                  sparkle:edSignature="{{ED_SIGNATURE}}"
                  length="{{LENGTH}}"
                  type="application/octet-stream" />
