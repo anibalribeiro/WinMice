@@ -23,6 +23,10 @@ permissions:
 concurrency:
   group: release
   cancel-in-progress: false
+  # Default queueing is `queue: single`, which cancels an already-pending run
+  # when a new one is queued — so three rapid tag pushes silently drop the
+  # middle release even with cancel-in-progress: false.
+  queue: max
 
 jobs:
   release:
