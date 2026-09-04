@@ -88,7 +88,14 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate, NSMenuItemValid
             updater: updater
         )
         updater.onPendingUpdateChange = { [weak self] in
-            self?.applyStatusItemAppearance()
+            guard let self else { return }
+            if self.updater.pendingUpdateVersion != nil {
+                self.installStatusItem()
+            } else if self.settings.menuBarIconHidden {
+                self.removeStatusItem()
+            } else {
+                self.applyStatusItemAppearance()
+            }
         }
 
         configureMainMenu()
@@ -193,7 +200,8 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate, NSMenuItemValid
         applyStatusItemAppearance()
     }
 
-    /// Badge and tooltip when a scheduled update is waiting. No-op if the item is hidden.
+    /// Badge and tooltip when a scheduled update is waiting. A pending update keeps the item
+    /// installed even if the user hid it; this is only a no-op when there is no status item yet.
     private func applyStatusItemAppearance() {
         guard let button = statusItem?.button else { return }
         let pending = updater.pendingUpdateVersion
@@ -328,7 +336,7 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate, NSMenuItemValid
             buttons[direction] = Int64(settings[button: direction])
         }
 
-        if settings.menuBarIconHidden {
+        if settings.menuBarIconHidden && updater.pendingUpdateVersion == nil {
             removeStatusItem()
         } else {
             installStatusItem()
