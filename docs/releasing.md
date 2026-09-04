@@ -105,6 +105,50 @@ gh secret set HOMEBREW_TAP_TOKEN --repo anibalribeiro/WinMice
 gh secret list --repo anibalribeiro/WinMice | grep HOMEBREW_TAP_TOKEN
 ```
 
+## Prerequisites: Sparkle update signing
+
+### 1. Generate the EdDSA keypair (once)
+
+Sparkle's tools live in the resolved SPM artifacts after a build:
+
+```bash
+swift build -c release
+"$(find .build/artifacts -type f -name generate_keys | head -n 1)"
+```
+
+This saves the private key in your login Keychain and prints the **public** key.
+Put that public key in `SPARKLE_PUBLIC_ED_KEY` at the top of
+`scripts/build-app.sh` — it is not a secret and ships in every copy of the app.
+
+Export the private key and store it in your password manager next to the `.p12`
+password:
+
+```bash
+"$(find .build/artifacts -type f -name generate_keys | head -n 1)" -x sparkle-private-key.txt
+```
+
+Losing both the Keychain copy and this export would normally end your ability
+to ship updates, because `SUPublicEDKey` is baked into every installed copy.
+Sparkle can fall back to Developer ID code-signing verification, but do not
+rely on that.
+
+### 2. Store the private key on the WinMice repo
+
+```bash
+gh secret set SPARKLE_ED_PRIVATE_KEY --repo anibalribeiro/WinMice < sparkle-private-key.txt
+rm sparkle-private-key.txt
+```
+
+### 3. Mark the cask as self-updating (once)
+
+In the `anibalribeiro/homebrew-winmice` repo, add `auto_updates true` to
+`Casks/winmice.rb`, below the `app "WinMice.app"` line. Without it, `brew`
+keeps believing the user is on the version it installed while Sparkle has moved
+them forward, and `brew upgrade` will try to reinstall over a newer app.
+
+`scripts/update-homebrew-cask.sh` only rewrites `version` and `sha256`, so this
+is a one-time manual commit rather than something the pipeline does.
+
 ## Dry-run before the first real tag
 
 After secrets are set, prove the pipeline **without** publishing a GitHub
@@ -112,7 +156,9 @@ Release or bumping Homebrew:
 
 1. GitHub → **Actions** → **Release** → **Run workflow**
 2. Leave **publish** unchecked (default)
-3. Optionally set a dry-run version string
+3. Set the version to one that has a `docs/changelog/<version>.md`. This is not
+   optional any more: the appcast is generated from that file, so the default
+   `0.0.0-notarize-dry-run` has no changelog and the run stops immediately.
 4. Confirm **Notarize app** / **Notarize DMG** / verify steps succeed
 5. Download the workflow artifacts and smoke-test Gatekeeper + Accessibility
 
@@ -120,31 +166,42 @@ Only then cut a real `vX.Y.Z` tag.
 
 ## Release checklist
 
-1. Ensure Apple + Homebrew secrets above are set, and a dry-run has passed once.
+1. Ensure the Apple, Homebrew, and Sparkle prerequisites above are set, and a
+   dry-run has passed once.
 
-2. Ensure `main` is green locally:
+2. Write `docs/changelog/<version>.md` as a plain bullet list. The release will
+   not build without it — it feeds both the GitHub release notes and the
+   in-app update dialog.
+
+3. Ensure `main` is green locally:
 
    ```bash
+   swift test
    ./scripts/test-build-signing-mode.sh
-   ./scripts/build-app.sh --version 1.0.1 && ./scripts/verify-bundle-metadata.sh dist/WinMice.app 1.0.1
+   ./scripts/test-generate-appcast.sh
+   ./scripts/build-app.sh --version 1.1.0
+   ./scripts/verify-bundle-metadata.sh dist/WinMice.app 1.1.0
+   ./scripts/verify-sparkle-embedding.sh dist/WinMice.app
+   ./scripts/render-release-notes.sh 1.1.0
    ```
 
-   When `create-dmg` is installed (`brew install create-dmg`), also verify the disk image:
+   When `create-dmg` is installed (`brew install create-dmg`), also verify the
+   disk image:
 
    ```bash
-   ./scripts/package-dmg.sh 1.0.1
+   ./scripts/package-dmg.sh 1.1.0
    ```
 
-3. Commit/push any pending release notes or docs on `main`.
+4. Commit/push any pending release notes or docs on `main`.
 
-4. Tag and push:
+5. Tag and push:
 
    ```bash
-   git tag v1.0.1
-   git push origin v1.0.1
+   git tag v1.1.0
+   git push origin v1.1.0
    ```
 
-5. Watch **Actions** → **Release**:
+6. Watch **Actions** → **Release**:
 
    ```bash
    gh run watch --repo anibalribeiro/WinMice
@@ -153,13 +210,26 @@ Only then cut a real `vX.Y.Z` tag.
    Confirm steps **Notarize app**, **Verify notarized app**, **Notarize DMG**,
    and **Verify notarized DMG** succeed.
 
-6. Confirm the GitHub Release includes both `WinMice-1.0.1.dmg` and `WinMice-1.0.1.zip`:
+7. Confirm the GitHub Release includes both `WinMice-1.1.0.dmg` and `WinMice-1.1.0.zip`:
 
    ```bash
-   gh release view v1.0.1 --repo anibalribeiro/WinMice
+   gh release view v1.1.0 --repo anibalribeiro/WinMice
    ```
 
-7. Confirm the tap cask was bumped; test install. The cask's `sha256` is the
+- Confirm the release carries `appcast.xml` and that the feed URL resolves:
+
+  ```bash
+  curl -sL https://github.com/anibalribeiro/WinMice/releases/latest/download/appcast.xml | xmllint --noout -
+  ```
+
+- Confirm an older installed copy sees the update: with the previous version in
+  `/Applications`, choose **Check for Updates…** and confirm the dialog offers
+  the new version with the changelog shown. Let it install, then confirm
+  **without touching System Settings** that autoscroll and side buttons still
+  work — the Developer ID identity is stable across releases, so the
+  Accessibility grant should survive.
+
+8. Confirm the tap cask was bumped; test install. The cask's `sha256` is the
    **DMG's** checksum (not the zip's) — that's what the workflow's Checksum
    step computes and what `brew` verifies:
 
@@ -171,7 +241,7 @@ Only then cut a real `vX.Y.Z` tag.
    brew install --cask winmice
    ```
 
-8. Smoke-test Gatekeeper: open `/Applications/WinMice.app` **without** Open Anyway. Grant **Accessibility** when prompted.
+9. Smoke-test Gatekeeper: open `/Applications/WinMice.app` **without** Open Anyway. Grant **Accessibility** when prompted.
 
    **Upgrading from ad-hoc (unsigned) releases:** the first Developer ID build
    is a new code identity. Remove every old WinMice row under

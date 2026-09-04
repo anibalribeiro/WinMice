@@ -10,6 +10,9 @@ let package = Package(
     products: [
         .executable(name: "WinMice", targets: ["WinMice"])
     ],
+    dependencies: [
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.9.0")
+    ],
     targets: [
         .target(
             name: "SwipeGesturePoster",
@@ -37,7 +40,12 @@ let package = Package(
         ),
         .executableTarget(
             name: "WinMice",
-            dependencies: ["SwipeGesturePoster", "ScrollEngine", "SideButtons"],
+            dependencies: [
+                "SwipeGesturePoster",
+                "ScrollEngine",
+                "SideButtons",
+                .product(name: "Sparkle", package: "Sparkle")
+            ],
             path: "Sources/WinMice",
             swiftSettings: [
                 .unsafeFlags(["-warnings-as-errors"])
@@ -46,7 +54,14 @@ let package = Package(
                 .linkedFramework("AppKit"),
                 .linkedFramework("SwiftUI"),
                 .linkedFramework("ApplicationServices"),
-                .linkedFramework("ServiceManagement")
+                .linkedFramework("ServiceManagement"),
+                // SwiftPM has no equivalent of Xcode's "Embed & Sign", and it does not add
+                // a Frameworks rpath to executables. Without this the app links fine and
+                // then dies at launch with a dyld "Library not loaded: @rpath/Sparkle.framework".
+                // NOTE: the combined "-Wl,-rpath,PATH" form is rejected by this toolchain's
+                // swiftc driver ("unknown argument"); -Xlinker pairs produce the identical
+                // LC_RPATH and are accepted. See task-1-report.md for verification.
+                .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@loader_path/../Frameworks"])
             ]
         ),
         .testTarget(

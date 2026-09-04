@@ -41,6 +41,19 @@ jobs:
             exit 1
           fi
 
+      - name: Sparkle embedding verifier
+        run: |
+          ./scripts/build-app.sh --version 0.0.0-ci
+          ./scripts/verify-sparkle-embedding.sh dist/WinMice.app
+
+      - name: Packaged zip verifier
+        run: |
+          ./scripts/package-release.sh 0.0.0-ci
+          ./scripts/verify-packaged-zip.sh dist/WinMice-0.0.0-ci.zip
+
+      - name: Appcast generator test
+        run: ./scripts/test-generate-appcast.sh
+
       - name: Pages home verifier
         run: ./scripts/verify-pages-home.sh
 

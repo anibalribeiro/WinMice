@@ -1,5 +1,9 @@
 ## WinMice {{VERSION}}
 
+### Changes
+
+{{CHANGES}}
+
 ### Install
 
 1. Download `WinMice-{{VERSION}}.dmg` below, open it, and drag **WinMice** to **Applications**.

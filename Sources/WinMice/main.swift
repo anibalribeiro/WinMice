@@ -17,6 +17,7 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
     private let indicator = ScrollIndicatorWindow()
     private let navigation = NavigationController()
     private let recorder = ButtonRecorder()
+    private let updater = UpdateController()
 
     private var statusItem: NSStatusItem?
     private var menu: NSMenu!
@@ -78,7 +79,8 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
         settingsController = SettingsWindowController(
             settings: settings,
             permissions: permissions,
-            recorder: recorder
+            recorder: recorder,
+            updater: updater
         )
 
         configureMainMenu()
@@ -150,6 +152,11 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
         let settingsItem = NSMenuItem(title: "Settings…", action: #selector(showSettings), keyEquivalent: ",")
         settingsItem.target = self
         menu.addItem(settingsItem)
+
+        let updateItem = NSMenuItem(title: "Check for Updates…", action: #selector(checkForUpdates), keyEquivalent: "")
+        updateItem.target = self
+        updateItem.image = NSImage(systemSymbolName: "arrow.down.circle", accessibilityDescription: "Check for updates")
+        menu.addItem(updateItem)
 
         let supportItem = NSMenuItem(title: "Buy me a coffee…", action: #selector(openSupportLink), keyEquivalent: "")
         supportItem.target = self
@@ -253,6 +260,10 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
 
     @objc private func openSupportLink() {
         NSWorkspace.shared.open(AppInfo.supportURL)
+    }
+
+    @objc private func checkForUpdates() {
+        updater.checkForUpdates()
     }
 
     /// Reopening from Finder or Spotlight is the only way back once the icon is hidden.

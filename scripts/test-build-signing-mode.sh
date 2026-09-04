@@ -49,6 +49,7 @@ STUB_DIR="$(mktemp -d)"
 trap 'rm -rf "$STUB_DIR"' EXIT HUP INT TERM
 cat > "$STUB_DIR/codesign" <<STUB
 #!/bin/sh
+printf '@@INVOCATION@@\n' >> "$RECORD_FILE"
 printf '%s\n' "\$@" >> "$RECORD_FILE"
 exit 0
 STUB
@@ -67,6 +68,30 @@ if ! assert_codesign_arg_pair "$RECORD_FILE" --entitlements "$ENTITLEMENTS"; the
 fi
 if ! assert_codesign_arg_present "$RECORD_FILE" --timestamp; then
   echo "release codesign missing --timestamp" >&2
+  exit 1
+fi
+
+# Sparkle's nested binaries must be signed separately from the app bundle, and
+# only the app bundle may carry entitlements.
+# `|| true` on every grep -c: a zero count makes grep exit 1, which under
+# set -eu would kill the script before the explanatory message below.
+INVOCATIONS=$(grep -c '@@INVOCATION@@' "$RECORD_FILE" || true)
+if [ "$INVOCATIONS" -lt 2 ]; then
+  echo "expected more than one codesign invocation (nested Sparkle signing missing), got $INVOCATIONS" >&2
+  exit 1
+fi
+ENTITLEMENT_USES=$(grep -c -- '^--entitlements$' "$RECORD_FILE" || true)
+if [ "$ENTITLEMENT_USES" -ne 1 ]; then
+  echo "expected exactly one --entitlements use (the app bundle), got $ENTITLEMENT_USES" >&2
+  exit 1
+fi
+if ! grep -q 'Sparkle.framework' "$RECORD_FILE"; then
+  echo "expected Sparkle.framework to be signed explicitly" >&2
+  exit 1
+fi
+# The app bundle must be signed last, so it seals the framework's hashes.
+if [ "$(grep -v '^@@INVOCATION@@$' "$RECORD_FILE" | tail -n 1)" != "dist/WinMice.app" ]; then
+  echo "expected dist/WinMice.app to be the last thing signed" >&2
   exit 1
 fi
 

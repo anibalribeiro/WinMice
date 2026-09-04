@@ -3,6 +3,7 @@ import SwiftUI
 
 struct GeneralPane: View {
     @ObservedObject var settings: AppSettings
+    @ObservedObject var updater: UpdateController
 
     @State private var loginItemError: String?
     @State private var isConfirmingReset = false
@@ -26,6 +27,13 @@ struct GeneralPane: View {
                 Toggle(isOn: $settings.menuBarIconHidden) {
                     Text("Hide the menu bar icon")
                     Text("WinMice keeps running. Open it again from Finder or Spotlight to bring the icon back.")
+                }
+            }
+
+            Section("Updates") {
+                Toggle(isOn: automaticallyChecksForUpdates) {
+                    Text("Check for updates automatically")
+                    Text("WinMice checks once a day and asks before installing anything.")
                 }
             }
 
@@ -58,7 +66,7 @@ struct GeneralPane: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Open at login is a system setting and stays as it is.")
+            Text("Open at login and the automatic update check are handled outside WinMice's own settings and stay as they are.")
         }
     }
 
@@ -73,6 +81,13 @@ struct GeneralPane: View {
                     loginItemError = "macOS refused the login item: \(error.localizedDescription)"
                 }
             }
+        )
+    }
+
+    private var automaticallyChecksForUpdates: Binding<Bool> {
+        Binding(
+            get: { updater.automaticallyChecksForUpdates },
+            set: { updater.automaticallyChecksForUpdates = $0 }
         )
     }
 }

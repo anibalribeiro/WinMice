@@ -13,7 +13,12 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     private let recorder: ButtonRecorder
 
-    init(settings: AppSettings, permissions: PermissionsMonitor, recorder: ButtonRecorder) {
+    init(
+        settings: AppSettings,
+        permissions: PermissionsMonitor,
+        recorder: ButtonRecorder,
+        updater: UpdateController
+    ) {
         self.recorder = recorder
         let window = NSWindow(
             contentRect: NSRect(origin: .zero, size: Self.defaultContentSize),
@@ -32,7 +37,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             rootView: SettingsView(
                 settings: settings,
                 permissions: permissions,
-                recorder: recorder
+                recorder: recorder,
+                updater: updater
             )
         )
         window.appearance = NSAppearance(named: .aqua)
