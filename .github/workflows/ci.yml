@@ -5,9 +5,20 @@ on:
     branches: [main]
   pull_request:
 
+# CI runs SwiftPM plugin code and a stubbed codesign on untrusted pull-request
+# branches, so the token gets no more than it needs. Without this the
+# repository default applies, which is likely read/write.
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   signing-scripts:
     runs-on: macos-latest
+    timeout-minutes: 60
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -60,11 +71,36 @@ jobs:
       - name: Pages home verifier
         run: ./scripts/verify-pages-home.sh
 
+      - name: Graphite theme verifier
+        run: ./scripts/verify-graphite-theme.sh
+
   unit-tests:
     runs-on: macos-latest
+    timeout-minutes: 30
     steps:
       - name: Check out
         uses: actions/checkout@v4
 
       - name: Swift tests
         run: swift test
+
+  lint:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Install linters
+        run: brew install shellcheck actionlint
+
+      # Most of the release pipeline's logic is POSIX sh, and none of it was
+      # linted before. These catch quoting and unset-variable regressions
+      # before they reach a release. Non-blocking while the backlog in the
+      # scripts this review did not examine is worked through.
+      - name: Shellcheck
+        continue-on-error: true
+        run: shellcheck -x -s sh scripts/*.sh
+
+      - name: Actionlint
+        run: actionlint

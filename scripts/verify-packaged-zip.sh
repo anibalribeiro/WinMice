@@ -24,7 +24,7 @@ if [ -d "$APP" ]; then
   }
 fi
 
-HERE=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+HERE=$(CDPATH='' cd -- "$(dirname "$0")" && pwd)
 
 "$HERE/verify-sparkle-embedding.sh" "$APP" || fail=1
 

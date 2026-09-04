@@ -18,6 +18,12 @@ on:
 permissions:
   contents: write
 
+# Two tag pushes must not race each other into the Homebrew tap push, and a
+# half-finished release must not be cancelled partway through notarization.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
     runs-on: macos-latest
@@ -56,10 +62,12 @@ jobs:
           case "$VERSION" in
             "") echo "Version must be non-empty" >&2; exit 1 ;;
           esac
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "publish=$PUBLISH" >> "$GITHUB_OUTPUT"
-          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+          {
+            echo "version=$VERSION"
+            echo "tag=$TAG"
+            echo "publish=$PUBLISH"
+            echo "prerelease=$PRERELEASE"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Require a changelog for this version
         env:
@@ -209,9 +217,11 @@ jobs:
           ZIP="dist/WinMice-${VERSION}.zip"
           DMG="dist/WinMice-${VERSION}.dmg"
           SHA=$(shasum -a 256 "$DMG" | awk '{print $1}')
-          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
-          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
-          echo "dmg=$DMG" >> "$GITHUB_OUTPUT"
+          {
+            echo "sha256=$SHA"
+            echo "zip=$ZIP"
+            echo "dmg=$DMG"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Generate appcast
         env:

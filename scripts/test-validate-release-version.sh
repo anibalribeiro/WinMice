@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+ROOT=$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)
 VALIDATE="$ROOT/scripts/validate-release-version.sh"
 
 fail=0

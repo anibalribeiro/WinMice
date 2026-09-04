@@ -93,7 +93,7 @@ cat > "$CONTENTS/Info.plist" <<PLIST
 </plist>
 PLIST
 
-ENTITLEMENTS="$(CDPATH= cd -- "$(dirname "$0")" && pwd)/WinMice.entitlements"
+ENTITLEMENTS="$(CDPATH='' cd -- "$(dirname "$0")" && pwd)/WinMice.entitlements"
 if [ -n "${CODESIGN_IDENTITY:-}" ]; then
   # Sparkle's helpers each carry their own signature, and --deep is not used here,
   # so they must be signed explicitly, inside-out, before the app bundle seals
