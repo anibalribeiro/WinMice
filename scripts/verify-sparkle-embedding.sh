@@ -7,6 +7,7 @@ APP="${1:?usage: verify-sparkle-embedding.sh <WinMice.app>}"
 FRAMEWORK="$APP/Contents/Frameworks/Sparkle.framework"
 BINARY="$APP/Contents/MacOS/WinMice"
 fail=0
+checked_nested=0
 
 [ -d "$FRAMEWORK" ] || { echo "missing $FRAMEWORK"; fail=1; }
 [ -f "$FRAMEWORK/Versions/B/Sparkle" ] || { echo "missing Sparkle binary in $FRAMEWORK"; fail=1; }
@@ -36,6 +37,7 @@ for nested in \
   "$SPARKLE_VERSIONED/Autoupdate"
 do
   [ -e "$nested" ] || continue
+  checked_nested=$((checked_nested + 1))
   INFO=$(codesign -dv --verbose=4 "$nested" 2>&1 || true)
   printf '%s\n' "$INFO" | grep -q 'Developer ID Application' || {
     echo "$nested: expected Developer ID Application identity"
@@ -68,6 +70,17 @@ do
     fail=1
   fi
 done
+
+# Every path above is a glob or a hardcoded version directory, and the loop
+# skips what it cannot find — so a Sparkle layout change makes this loop check
+# little more than the framework itself, skip every helper check, and report
+# success on a bundle with no Sparkle helpers in it. build-app.sh has its own
+# counter, but this verifier also runs against the extracted zip, which nothing
+# else guards. Two XPC services, Updater.app, Autoupdate, and the framework.
+[ "$checked_nested" -ge 5 ] || {
+  echo "checked only $checked_nested nested Sparkle items; the framework layout changed"
+  fail=1
+}
 
 if [ "$fail" -eq 0 ]; then
   echo "Verified Sparkle embedding: $APP"
