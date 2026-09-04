@@ -164,6 +164,12 @@ Release or bumping Homebrew:
 
 Only then cut a real `vX.Y.Z` tag.
 
+A manual run tags `manual-<version>` rather than `v<version>`. If you do check
+**publish** on one, it is deliberately constrained so it cannot be mistaken for
+a real release: the GitHub Release is created as a **prerelease**, so it never
+becomes `releases/latest` and the appcast there is never served to installed
+copies, and the Homebrew cask is left alone. Real releases come from tag pushes.
+
 ## Release checklist
 
 1. Ensure the Apple, Homebrew, and Sparkle prerequisites above are set, and a
