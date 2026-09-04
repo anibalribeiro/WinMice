@@ -41,6 +41,11 @@ jobs:
             exit 1
           fi
 
+      - name: Sparkle embedding verifier
+        run: |
+          ./scripts/build-app.sh --version 0.0.0-ci
+          ./scripts/verify-sparkle-embedding.sh dist/WinMice.app
+
       - name: Pages home verifier
         run: ./scripts/verify-pages-home.sh
 
