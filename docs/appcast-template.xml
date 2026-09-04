@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>WinMice</title>
+    <link>https://github.com/anibalribeiro/WinMice/releases/latest/download/appcast.xml</link>
+    <description>Updates for WinMice</description>
+    <language>en</language>
+    <item>
+      <title>WinMice {{VERSION}}</title>
+      <link>https://anibalribeiro.cz/Winmice/</link>
+      <sparkle:version>{{VERSION}}</sparkle:version>
+      <sparkle:shortVersionString>{{VERSION}}</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <sparkle:fullReleaseNotesLink>https://github.com/anibalribeiro/WinMice/releases</sparkle:fullReleaseNotesLink>
+      <pubDate>{{PUBDATE}}</pubDate>
+      <description sparkle:format="markdown"><![CDATA[
+{{CHANGES}}
+      ]]></description>
+      <enclosure url="https://github.com/anibalribeiro/WinMice/releases/download/v{{VERSION}}/WinMice-{{VERSION}}.zip"
+                 sparkle:edSignature="{{ED_SIGNATURE}}"
+                 length="{{LENGTH}}"
+                 type="application/octet-stream" />
+    </item>
+  </channel>
+</rss>
