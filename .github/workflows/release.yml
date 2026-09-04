@@ -247,14 +247,23 @@ jobs:
           DMG: ${{ steps.sum.outputs.dmg }}
           PRERELEASE: ${{ steps.ver.outputs.prerelease }}
         run: |
-          # A release is `latest` from the moment it is created, and
+          # A release is `latest` from the moment it is published, and
           # releases/latest/download/appcast.xml resolves against it — so
-          # creating it before the assets are up leaves the feed 404ing for
+          # publishing before the assets are up leaves the feed 404ing for
           # every installed copy. A draft is not eligible to be `latest`, so
           # publish only after every asset is confirmed uploaded.
           #
-          # appcast.xml is uploaded last on purpose: it names the zip, so the
-          # zip must already be there.
+          # appcast.xml goes up in a second, separate call because
+          # `gh release upload` uploads its arguments concurrently (five
+          # workers), so argument order guarantees nothing. The appcast names
+          # the zip, so the zip has to be up first — and on the clobber path
+          # the release is already live, where `--clobber` deletes each old
+          # asset before uploading its replacement.
+          upload_assets() {
+            gh release upload "$TAG" "$ZIP" "$DMG" --clobber
+            gh release upload "$TAG" dist/appcast.xml --clobber
+          }
+
           if gh release view "$TAG" >/dev/null 2>&1; then
             if [ "$PRERELEASE" = "true" ]; then
               IS_PRE=$(gh release view "$TAG" --json isPrerelease -q .isPrerelease)
@@ -264,7 +273,7 @@ jobs:
                 exit 1
               fi
             fi
-            gh release upload "$TAG" "$ZIP" "$DMG" dist/appcast.xml --clobber
+            upload_assets
           else
             if [ "$PRERELEASE" = "true" ]; then
               gh release create "$TAG" \
@@ -280,7 +289,19 @@ jobs:
                 --title "WinMice $VERSION" \
                 --notes-file /tmp/release-notes.md
             fi
-            gh release upload "$TAG" "$ZIP" "$DMG" dist/appcast.xml --clobber
+            upload_assets
+          fi
+
+          # Runs on both paths. `gh release view` resolves drafts, so a run
+          # that died between creating the draft and publishing it would send
+          # the next re-run down the clobber path, which would upload into a
+          # release that nothing ever publishes — stranding it as a draft that
+          # can only be fixed by hand. Re-asserting --prerelease here rather
+          # than relying on the edit endpoint leaving it alone also restores
+          # the flag on a re-run, which is the other half of this task.
+          if [ "$PRERELEASE" = "true" ]; then
+            gh release edit "$TAG" --draft=false --prerelease
+          else
             gh release edit "$TAG" --draft=false
           fi
 
