@@ -4,7 +4,7 @@ import ButtonGate
 import ScrollEngine
 
 @MainActor
-private final class WinMiceApp: NSObject, NSApplicationDelegate {
+private final class WinMiceApp: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     /// What became of a middle-button press the tap swallowed.
     private enum MiddlePress {
         /// Still undecided: replayed as an ordinary click if the press ends without scrolling.
@@ -86,6 +86,9 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
             recorder: recorder,
             updater: updater
         )
+        updater.onPendingUpdateChange = { [weak self] in
+            self?.applyStatusItemAppearance()
+        }
 
         configureMainMenu()
         configureMenu()
@@ -176,16 +179,29 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
     }
 
     private func installStatusItem() {
-        guard statusItem == nil else { return }
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        if let button = statusItem?.button {
-            button.image = Self.menuBarIcon()
-            button.image?.isTemplate = true
-            button.target = self
-            button.action = #selector(statusBarButtonClicked(_:))
-            // mouseDown is more reliable than mouseUp for status items, especially alongside an
-            // event tap that also sees mouse events.
-            button.sendAction(on: [.leftMouseDown, .rightMouseDown])
+        if statusItem == nil {
+            statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+            if let button = statusItem?.button {
+                button.target = self
+                button.action = #selector(statusBarButtonClicked(_:))
+                // mouseDown is more reliable than mouseUp for status items, especially alongside an
+                // event tap that also sees mouse events.
+                button.sendAction(on: [.leftMouseDown, .rightMouseDown])
+            }
+        }
+        applyStatusItemAppearance()
+    }
+
+    /// Badge and tooltip when a scheduled update is waiting. No-op if the item is hidden.
+    private func applyStatusItemAppearance() {
+        guard let button = statusItem?.button else { return }
+        let pending = updater.pendingUpdateVersion
+        button.image = Self.menuBarIcon(updatePending: pending != nil)
+        button.image?.isTemplate = true
+        if let pending {
+            button.toolTip = "Update \(pending) available"
+        } else {
+            button.toolTip = nil
         }
     }
 
@@ -196,7 +212,7 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
     }
 
     /// Classic middle-button autoscroll glyph for the menu bar (template image).
-    private static func menuBarIcon() -> NSImage {
+    private static func menuBarIcon(updatePending: Bool = false) -> NSImage {
         let pointSize: CGFloat = 18
         let image = NSImage(size: NSSize(width: pointSize, height: pointSize), flipped: false) { rect in
             let inset = rect.insetBy(dx: 1.25, dy: 1.25)
@@ -237,6 +253,16 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
             down.close()
             down.fill()
 
+            if updatePending {
+                let diameter: CGFloat = 5
+                NSBezierPath(ovalIn: NSRect(
+                    x: rect.maxX - diameter - 0.5,
+                    y: rect.maxY - diameter - 0.5,
+                    width: diameter,
+                    height: diameter
+                )).fill()
+            }
+
             return true
         }
         image.isTemplate = true
@@ -268,6 +294,13 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
 
     @objc private func checkForUpdates() {
         updater.checkForUpdates()
+    }
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(checkForUpdates) {
+            return updater.canCheckForUpdates
+        }
+        return true
     }
 
     /// Reopening from Finder or Spotlight is the only way back once the icon is hidden.
