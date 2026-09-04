@@ -1,3 +1,4 @@
+import Combine
 import Sparkle
 
 /// Thin wrapper over Sparkle's standard updater.

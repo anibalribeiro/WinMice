@@ -50,6 +50,18 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "publish=$PUBLISH" >> "$GITHUB_OUTPUT"
 
+      - name: Require a changelog for this version
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          # Both the release notes and the Sparkle appcast are generated from this
+          # file. Checking it here fails in seconds instead of after notarization.
+          if [ ! -f "docs/changelog/${VERSION}.md" ]; then
+            echo "Missing docs/changelog/${VERSION}.md" >&2
+            echo "Write the changelog first; the release notes and the appcast both come from it." >&2
+            exit 1
+          fi
+
       - name: Require signing secrets
         env:
           APPLE_DEVELOPER_ID_P12_BASE64: ${{ secrets.APPLE_DEVELOPER_ID_P12_BASE64 }}

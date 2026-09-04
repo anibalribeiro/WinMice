@@ -156,7 +156,9 @@ Release or bumping Homebrew:
 
 1. GitHub → **Actions** → **Release** → **Run workflow**
 2. Leave **publish** unchecked (default)
-3. Optionally set a dry-run version string
+3. Set the version to one that has a `docs/changelog/<version>.md`. This is not
+   optional any more: the appcast is generated from that file, so the default
+   `0.0.0-notarize-dry-run` has no changelog and the run stops immediately.
 4. Confirm **Notarize app** / **Notarize DMG** / verify steps succeed
 5. Download the workflow artifacts and smoke-test Gatekeeper + Accessibility
 
