@@ -1,12 +1,19 @@
-# WinMice
+# WinMice — Windows-style autoscroll and mouse side buttons for macOS
 
 <img src="docs/icon.png" alt="WinMice icon" width="128" height="128">
 
-A tiny native macOS menu-bar utility that brings Windows-style mouse behavior to Mac: vector scrolling on middle-click and configurable back/forward side buttons. Built on Swift and AppKit with no Electron and no interpreted runtime. Ships as a ~1.7 MB download, about 4 MB installed — the app's own binary is under 1 MB and the rest is the Sparkle framework that delivers updates — runs as a single lightweight process, and uses negligible CPU and memory while idle.
+A tiny native macOS menu-bar utility that brings Windows-style mouse behavior to Mac: middle-click vector scrolling (autoscroll) and configurable back/forward side buttons. Built on Swift and AppKit with no Electron and no interpreted runtime. Ships as a ~1.7 MB download, about 4 MB installed — the app's own binary is under 1 MB and the rest is the Sparkle framework that delivers updates — runs as a single lightweight process, and uses negligible CPU and memory while idle.
 
 **[Product site](https://anibalribeiro.cz/Winmice/)** — screenshots and a quick demo loop.
 
 The app appears in the macOS menu bar. Open **Settings…** (⌘,) from the menu bar icon to configure everything.
+
+> **Download WinMice only from [GitHub Releases](https://github.com/anibalribeiro/WinMice/releases/latest),
+> the [Homebrew tap](https://github.com/anibalribeiro/homebrew-winmice), or
+> [anibalribeiro.cz/Winmice](https://anibalribeiro.cz/Winmice/).** Copies of this source have been
+> re-uploaded under other GitHub accounts with download buttons that do not point at a signed
+> release. WinMice is macOS only, so any `.exe` or `.cmd` offered as a WinMice installer is not
+> this project.
 
 ## Install
 
@@ -119,6 +126,35 @@ Local developer builds are ad-hoc signed, so a reinstall of a local build can lo
 Swipe navigation posts a clean-room trackpad-style gesture (MIT). If an app ignores swipes, switch **Buttons → Navigation method** to Keyboard.
 
 The menu-bar icon uses a custom template glyph matching the classic middle-button scroll motif.
+
+## FAQ
+
+**Does macOS have Windows-style autoscroll built in?**
+No. macOS has no middle-click autoscroll at any level, and the middle button is left to whatever
+app is under the pointer. WinMice adds the behavior system-wide.
+
+**Do my mouse's back and forward buttons work on a Mac without extra software?**
+Only inside apps that choose to handle buttons 4 and 5 themselves. Most browsers do; Finder,
+Preview, and the majority of native apps do not. WinMice makes those buttons navigate everywhere.
+
+**How is this different from AutoScroll or Sensible Side Buttons?**
+Those solve one half each. WinMice does both in a single ~1.7 MB menu-bar process, is actively
+maintained, and is Developer ID signed and notarized. If you already run one of them, WinMice
+replaces it rather than sitting alongside it — two apps grabbing the same mouse button will fight.
+
+**Why does it need Accessibility permission?**
+Reading mouse buttons and synthesizing scroll or navigation events requires a modifying event tap,
+which macOS gates behind Accessibility. That is the only permission WinMice asks for, and it is
+used for nothing else.
+
+**Does it work with any mouse?**
+Any mouse with a middle button works for scrolling. For back/forward you need a mouse with extra
+side buttons — Logitech, Razer, Corsair, SteelSeries, and generic USB mice all report them the same
+way. You can map any button the mouse reports, not just 4 and 5.
+
+**Is it a Windows program?**
+No. WinMice is a macOS app; the name refers to the Windows mouse behavior it reproduces. It is
+unrelated to WinMICE, the old statistics tool for multiple imputation of missing data.
 
 ## License
 
