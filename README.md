@@ -2,7 +2,7 @@
 
 <img src="docs/icon.png" alt="WinMice icon" width="128" height="128">
 
-A tiny native macOS menu-bar utility that brings Windows-style mouse behavior to Mac: vector scrolling on middle-click and configurable back/forward side buttons. Built on Swift and AppKit with no Electron and no interpreted runtime. Ships as a ~4 MB download — the app itself is under 1 MB, plus the Sparkle framework that delivers updates — runs as a single lightweight process, and uses negligible CPU and memory while idle.
+A tiny native macOS menu-bar utility that brings Windows-style mouse behavior to Mac: vector scrolling on middle-click and configurable back/forward side buttons. Built on Swift and AppKit with no Electron and no interpreted runtime. Ships as a ~1.7 MB download, about 4 MB installed — the app's own binary is under 1 MB and the rest is the Sparkle framework that delivers updates — runs as a single lightweight process, and uses negligible CPU and memory while idle.
 
 **[Product site](https://anibalribeiro.cz/Winmice/)** — screenshots and a quick demo loop.
 
