@@ -62,8 +62,8 @@ jobs:
         run: |
           # Both the release notes and the Sparkle appcast are generated from this
           # file. Checking it here fails in seconds instead of after notarization.
-          if [ ! -f "docs/changelog/${VERSION}.md" ]; then
-            echo "Missing docs/changelog/${VERSION}.md" >&2
+          if [ ! -s "docs/changelog/${VERSION}.md" ]; then
+            echo "Missing or empty docs/changelog/${VERSION}.md" >&2
             echo "Write the changelog first; the release notes and the appcast both come from it." >&2
             exit 1
           fi

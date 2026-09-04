@@ -14,7 +14,7 @@ OUT="dist/appcast.xml"
 
 [ -f "$TEMPLATE" ] || { echo "missing $TEMPLATE" >&2; exit 1; }
 [ -f "$ZIP" ] || { echo "missing zip: $ZIP" >&2; exit 1; }
-[ -f "$CHANGELOG" ] || { echo "missing changelog: $CHANGELOG" >&2; exit 1; }
+[ -s "$CHANGELOG" ] || { echo "missing or empty changelog: $CHANGELOG" >&2; exit 1; }
 [ -f "$KEY_FILE" ] || { echo "missing key file: $KEY_FILE" >&2; exit 1; }
 
 # Sparkle ships sign_update inside the SPM artifact tree that swift build already
@@ -55,7 +55,13 @@ awk -v version="$VERSION" \
     -v pubdate="$PUBDATE" \
     -v changelog="$CHANGELOG" '
   $0 ~ /^[[:space:]]*\{\{CHANGES\}\}[[:space:]]*$/ {
-    while ((getline line < changelog) > 0) print line
+    while ((getline line < changelog) > 0) {
+      # A literal ]]> closes the CDATA section early and makes the whole
+      # appcast unparseable. Splitting it across two CDATA sections is the
+      # standard escape and renders identically.
+      gsub(/\]\]>/, "]]]]><![CDATA[>", line)
+      print line
+    }
     close(changelog)
     next
   }
@@ -73,5 +79,14 @@ if grep -q '{{' "$OUT"; then
   echo "unsubstituted placeholder left in $OUT" >&2
   exit 1
 fi
+
+# The placeholder guard cannot see structural damage — an unbalanced tag or a
+# CDATA section closed early still substitutes cleanly. Sparkle silently stops
+# offering updates when the feed will not parse, so this failure belongs here,
+# in the release job, rather than in every installed copy.
+xmllint --noout "$OUT" || {
+  echo "generated appcast is not well-formed XML: $OUT" >&2
+  exit 1
+}
 
 echo "Wrote $OUT"

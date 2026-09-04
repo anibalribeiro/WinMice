@@ -7,7 +7,7 @@ CHANGELOG="docs/changelog/${VERSION}.md"
 
 [ -f "$TEMPLATE" ] || { echo "missing $TEMPLATE" >&2; exit 1; }
 # Failing here is deliberate: a release should not be publishable without notes.
-[ -f "$CHANGELOG" ] || { echo "missing $CHANGELOG — write the changelog before tagging" >&2; exit 1; }
+[ -s "$CHANGELOG" ] || { echo "missing or empty $CHANGELOG — write the changelog before tagging" >&2; exit 1; }
 
 awk -v version="$VERSION" -v changelog="$CHANGELOG" '
   $0 == "{{CHANGES}}" {
