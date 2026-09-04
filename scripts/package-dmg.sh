@@ -19,6 +19,16 @@ ditto "$APP_DIR" "$STAGE/WinMice.app"
 # window scroll and cluttered the classic two-icon installer. Gatekeeper steps
 # live in README / release notes / docs/dmg/INSTALL.txt in the repo.
 
+# create-dmg builds a read-write scratch image named rw.<pid>.<name> beside the
+# output and, on its AppleScript failure path, detaches the volume but exits
+# without deleting it. The pid means the name never collides, so this only ever
+# leaks disk space — but a retried release leaves two behind in dist/.
+remove_scratch_images() {
+  rm -f dist/rw.*."$(basename "$OUT")"
+}
+trap remove_scratch_images EXIT HUP INT TERM
+
+remove_scratch_images
 rm -f "$OUT"
 
 create_image() {
