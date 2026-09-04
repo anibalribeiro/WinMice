@@ -54,6 +54,9 @@ jobs:
       - name: Appcast generator test
         run: ./scripts/test-generate-appcast.sh
 
+      - name: Release version validator test
+        run: ./scripts/test-validate-release-version.sh
+
       - name: Pages home verifier
         run: ./scripts/verify-pages-home.sh
 

@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - "v*.*.*"
+      - "v[0-9]*.[0-9]*.[0-9]*"
   workflow_dispatch:
     inputs:
       publish:
@@ -45,6 +45,11 @@ jobs:
               v*) VERSION="${TAG#v}" ;;
               *) echo "Tag must start with v" >&2; exit 1 ;;
             esac
+            # A tag push publishes a non-prerelease, which GitHub makes
+            # `latest`, which is the appcast feed every installed copy reads.
+            # The glob above cannot express "three numeric components", so the
+            # shape is enforced here.
+            ./scripts/validate-release-version.sh "$VERSION"
             PUBLISH=true
             PRERELEASE=false
           fi
