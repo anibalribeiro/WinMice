@@ -26,7 +26,9 @@ public struct ScrollEngine {
     /// Exponent on the distance past the dead zone. Above 1 this buys fine control near the anchor
     /// at the cost of a steeper ramp further out.
     var acceleration: CGFloat = 1.35
-    /// Ceiling for one tick, so a pointer flung at the edge of the screen stays controllable.
+    /// Ceiling for one tick at the default speed, so a pointer flung at the edge of the screen
+    /// stays controllable. Scaled by the user's speed preference, so raising Speed raises the top
+    /// speed rather than only moving the knee closer to the anchor.
     var maxDeltaPerTick: CGFloat = 130
 
     private var remainder = CGVector.zero
@@ -46,7 +48,8 @@ public struct ScrollEngine {
             return nil
         }
 
-        let magnitude = min(speed * pow(distance - deadZone, acceleration), maxDeltaPerTick)
+        let ceiling = maxDeltaPerTick * speed / Self.baseSpeed
+        let magnitude = min(speed * pow(distance - deadZone, acceleration), ceiling)
         // Positive wheel1 scrolls up and positive wheel2 scrolls left, so the vertical offset maps
         // straight across and the horizontal one inverts. The reverse flags flip either axis on top
         // of that, before the remainder is added, so the carryover stays in the same sign

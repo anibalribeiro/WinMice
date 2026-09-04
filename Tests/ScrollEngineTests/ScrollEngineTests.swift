@@ -122,4 +122,35 @@ final class ScrollEngineTests: XCTestCase {
 
         XCTAssertNil(engine.tick(offset: CGVector(dx: 0, dy: engine.deadZone - 1)))
     }
+
+    /// The Speed preference advertises a faster scroll, not just a shorter ramp. With a fixed
+    /// per-tick ceiling, every setting above the default collapses to the same top speed over
+    /// most of the screen, which makes the slider do nothing where users actually drag.
+    func testHigherSpeedScrollsFasterFarFromTheAnchor() {
+        let far = CGVector(dx: 0, dy: -400)
+
+        var normal = ScrollEngine()
+        normal.speed = ScrollEngine.baseSpeed
+        var fast = ScrollEngine()
+        fast.speed = ScrollEngine.baseSpeed * 3
+
+        guard let normalStep = normal.tick(offset: far), let fastStep = fast.tick(offset: far) else {
+            return XCTFail("both engines should scroll 400 points from the anchor")
+        }
+
+        XCTAssertGreaterThan(abs(fastStep.vertical), abs(normalStep.vertical))
+    }
+
+    /// The ceiling still has to exist, or a pointer flung at the edge of a large display
+    /// scrolls hundreds of pixels in a single 16 ms tick.
+    func testSpeedIsStillCappedAtTheFarEdge() {
+        var engine = ScrollEngine()
+        engine.speed = ScrollEngine.baseSpeed
+
+        guard let step = engine.tick(offset: CGVector(dx: 0, dy: -4000)) else {
+            return XCTFail("a distant pointer should scroll")
+        }
+
+        XCTAssertEqual(abs(step.vertical), 130)
+    }
 }
