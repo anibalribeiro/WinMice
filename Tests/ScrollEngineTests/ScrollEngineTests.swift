@@ -153,4 +153,38 @@ final class ScrollEngineTests: XCTestCase {
 
         XCTAssertEqual(abs(step.vertical), 130)
     }
+
+    /// scrollSpeedPercent comes from UserDefaults, so it can be stale from an older build or
+    /// hand-edited. A negative or non-finite speed used to reach Int32(), which traps and takes
+    /// the whole app down on the next scroll tick.
+    func testHostileSpeedValuesDoNotTrap() {
+        for hostile in [-1, 0, 100_000_000] {
+            var engine = ScrollEngine()
+            engine.speed = CGFloat(hostile)
+            _ = engine.tick(offset: CGVector(dx: 0, dy: -700))
+        }
+
+        var nanEngine = ScrollEngine()
+        nanEngine.speed = .nan
+        _ = nanEngine.tick(offset: CGVector(dx: 0, dy: -700))
+    }
+
+    /// A speed the UI cannot express must be pulled into range rather than honored, so a corrupt
+    /// preference cannot invert scrolling or fling the view.
+    func testSpeedIsClampedIntoRangeOnAssignment() {
+        var engine = ScrollEngine()
+
+        engine.speed = -5
+        XCTAssertEqual(engine.speed, ScrollEngine.minSpeed)
+
+        engine.speed = 1_000
+        XCTAssertEqual(engine.speed, ScrollEngine.maxSpeed)
+    }
+
+    /// A non-finite offset must stop scrolling rather than crash.
+    func testNonFiniteOffsetDoesNotTrap() {
+        var engine = ScrollEngine()
+        XCTAssertNil(engine.tick(offset: CGVector(dx: CGFloat.nan, dy: CGFloat.nan)))
+        XCTAssertNil(engine.tick(offset: CGVector(dx: 0, dy: CGFloat.infinity)))
+    }
 }
