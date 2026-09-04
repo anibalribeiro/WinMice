@@ -26,7 +26,7 @@ ditto "$APP_DIR" "$STAGE/WinMice.app"
 remove_scratch_images() {
   rm -f dist/rw.*."$(basename "$OUT")"
 }
-trap remove_scratch_images EXIT HUP INT TERM
+trap remove_scratch_images EXIT
 
 remove_scratch_images
 rm -f "$OUT"
