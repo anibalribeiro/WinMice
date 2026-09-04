@@ -1,5 +1,6 @@
 @preconcurrency import AppKit
 @preconcurrency import ApplicationServices
+import ButtonGate
 import ScrollEngine
 
 @MainActor
@@ -43,6 +44,9 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
     private var lastMiddleReplay: Date?
     /// Mapped navigation buttons currently held down, so their release can be swallowed too.
     private var heldNavigationButtons: Set<Int64> = []
+    /// Latches each press's tap decision so the matching release follows it instead of
+    /// re-deriving from whatever the settings and replay window happen to say at that moment.
+    private var buttonGate = ButtonGate()
 
     private static let middleButton: Int64 = 2
     private static let scrollTick = DispatchTimeInterval.milliseconds(16)
@@ -376,6 +380,7 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
     private func resetEventState() {
         stopScrolling()
         heldNavigationButtons.removeAll()
+        buttonGate.reset()
         recordedButton = nil
         middlePress = nil
     }
@@ -395,6 +400,12 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
 
         if consumeForRecording(isDown: isDown, button: button) { return nil }
 
+        if !isDown, heldNavigationButtons.contains(button) {
+            // The press was swallowed under the mapping in force at the time. Honor that record
+            // rather than the current mapping, which may have changed while the button was held.
+            return handleNavigationButton(navigation.direction(for: button), button: button, isDown: isDown)
+        }
+
         if navigation.enabled, let direction = navigation.direction(for: button) {
             return handleNavigationButton(direction, button: button, isDown: isDown)
         }
@@ -407,7 +418,7 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
     /// pointer with an unmatched press or release, and browsers that act on buttons 4 and 5
     /// themselves would navigate a second time on top of the swipe WinMice just sent.
     private func handleNavigationButton(
-        _ direction: NavigationDirection,
+        _ direction: NavigationDirection?,
         button: Int64,
         isDown: Bool
     ) -> Unmanaged<CGEvent>? {
@@ -416,11 +427,13 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
 
         if isDown {
             heldNavigationButtons.insert(button)
-            if navigation.triggerOnMouseDown {
+            if let direction, navigation.triggerOnMouseDown {
                 navigation.perform(direction)
             }
         } else if heldNavigationButtons.remove(button) != nil, !navigation.triggerOnMouseDown {
-            navigation.perform(direction)
+            if let direction {
+                navigation.perform(direction)
+            }
         }
         return nil
     }
@@ -431,9 +444,13 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
     /// — a middle click that turns out to be just a click is replayed on release, which is when
     /// apps act on it anyway.
     private func handleMiddleButton(isDown: Bool, event: CGEvent) -> Unmanaged<CGEvent>? {
-        guard !isReplayEcho() else { return Unmanaged.passUnretained(event) }
-
         if isDown {
+            // Latched here rather than re-checked on release: the guard is a 200 ms window, so a
+            // press inside it released after it would otherwise be handed to the app with its
+            // release swallowed.
+            guard buttonGate.press(button: Self.middleButton, action: isReplayEcho() ? .passThrough : .swallow) == .swallow else {
+                return Unmanaged.passUnretained(event)
+            }
             if isActive {
                 // Hold-to-start has latched, so this press is the one that ends it.
                 stopScrolling()
@@ -445,6 +462,9 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
             return nil
         }
 
+        guard buttonGate.release(button: Self.middleButton, fallback: .swallow) == .swallow else {
+            return Unmanaged.passUnretained(event)
+        }
         let press = middlePress
         middlePress = nil
         // Hold-to-scroll ends on release; hold-to-start stays latched until the next press.
