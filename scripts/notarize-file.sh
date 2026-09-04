@@ -41,7 +41,7 @@ printf '%s\n' "$KEY_P8" > "$KEY_PATH"
 chmod 600 "$KEY_PATH"
 
 if [ -d "$TARGET" ]; then
-  TARGET_DIR="$(CDPATH= cd -- "$(dirname "$TARGET")" && pwd)"
+  TARGET_DIR="$(CDPATH='' cd -- "$(dirname "$TARGET")" && pwd)"
   TARGET_BASE="$(basename "$TARGET")"
   rm -f "$ZIP_PATH"
   ditto -c -k --keepParent "$TARGET_DIR/$TARGET_BASE" "$ZIP_PATH"

@@ -18,7 +18,9 @@ concurrency:
 jobs:
   signing-scripts:
     runs-on: macos-latest
-    timeout-minutes: 60
+    # Measured cold runtime is ~23s. This keeps a wide margin over even a slow
+    # cold run while cutting how long a hung `swift build` can sit on a runner.
+    timeout-minutes: 15
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -85,21 +87,57 @@ jobs:
         run: swift test
 
   lint:
-    runs-on: macos-latest
-    timeout-minutes: 20
+    # Both linters are platform-independent and give identical results on
+    # Linux, and the Ubuntu runner pool is larger and schedules faster than
+    # the macOS one, so there is nothing to gain from running them on macOS.
+    runs-on: ubuntu-latest
+    # Two ~4MB downloads and two linters that finish in well under a second.
+    # The realistic failure here is a stalled download, not slow work.
+    timeout-minutes: 10
     steps:
       - name: Check out
         uses: actions/checkout@v4
 
-      - name: Install linters
-        run: brew install shellcheck actionlint
+      # Both linter steps below are blocking, so both versions are deliberate
+      # pins. Left unpinned, an upstream release that adds a new rule fails CI
+      # on pull requests that touch no shell script and no workflow at all.
+      #
+      # To bump: change a version and its sha256 together. actionlint ships an
+      # actionlint_<version>_checksums.txt asset, so take that digest from
+      # upstream. shellcheck publishes no checksum file for its releases, so
+      # its digest here was computed from the downloaded tarball rather than
+      # verified against upstream. It is still worth pinning: it makes a
+      # silently retagged asset fail this step instead of quietly changing
+      # what CI enforces.
+      - name: Install pinned linters
+        env:
+          SHELLCHECK_VERSION: "0.11.0"
+          SHELLCHECK_SHA256: "b7af85e41cc99489dcc21d66c6d5f3685138f06d34651e6d34b42ec6d54fe6f6"
+          ACTIONLINT_VERSION: "1.7.12"
+          ACTIONLINT_SHA256: "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8"
+        run: |
+          BIN="${RUNNER_TEMP}/lint-bin"
+          mkdir -p "$BIN"
 
-      # Most of the release pipeline's logic is POSIX sh, and none of it was
-      # linted before. These catch quoting and unset-variable regressions
-      # before they reach a release. Non-blocking while the backlog in the
-      # scripts this review did not examine is worked through.
+          curl -fsSL --retry 3 -o "${RUNNER_TEMP}/shellcheck.tar.gz" \
+            "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.x86_64.tar.gz"
+          echo "${SHELLCHECK_SHA256}  ${RUNNER_TEMP}/shellcheck.tar.gz" | sha256sum -c -
+          tar -xzf "${RUNNER_TEMP}/shellcheck.tar.gz" -C "$BIN" \
+            --strip-components=1 "shellcheck-v${SHELLCHECK_VERSION}/shellcheck"
+
+          curl -fsSL --retry 3 -o "${RUNNER_TEMP}/actionlint.tar.gz" \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          echo "${ACTIONLINT_SHA256}  ${RUNNER_TEMP}/actionlint.tar.gz" | sha256sum -c -
+          tar -xzf "${RUNNER_TEMP}/actionlint.tar.gz" -C "$BIN" actionlint
+
+          chmod +x "$BIN/shellcheck" "$BIN/actionlint"
+          "$BIN/shellcheck" --version
+          "$BIN/actionlint" --version
+          echo "$BIN" >> "$GITHUB_PATH"
+
+      # Most of the release pipeline's logic is POSIX sh. These catch quoting
+      # and unset-variable regressions before they reach a release.
       - name: Shellcheck
-        continue-on-error: true
         run: shellcheck -x -s sh scripts/*.sh
 
       - name: Actionlint

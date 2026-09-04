@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-ROOT="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
+ROOT="$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)"
 THEME="$ROOT/Sources/WinMice/Settings/WinMiceTheme.swift"
 SETTINGS_VIEW="$ROOT/Sources/WinMice/Settings/SettingsView.swift"
 fail=0

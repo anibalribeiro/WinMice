@@ -1,9 +1,9 @@
 #!/bin/sh
 set -eu
-ROOT="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
+ROOT="$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 ORIG_PATH="$PATH"
-ENTITLEMENTS="$(CDPATH= cd -- "$(dirname "$0")" && pwd)/WinMice.entitlements"
+ENTITLEMENTS="$(CDPATH='' cd -- "$(dirname "$0")" && pwd)/WinMice.entitlements"
 
 assert_codesign_arg_pair() {
   file="$1"

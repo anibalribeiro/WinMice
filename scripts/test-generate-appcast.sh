@@ -165,6 +165,12 @@ mkdir -p "$HOSTILE_ROOT/project/docs" "$HOSTILE_ROOT/project/dist"
 cp "$ROOT/docs/appcast-template.xml" "$HOSTILE_ROOT/project/docs/appcast-template.xml"
 printf 'zip contents\n' > "$HOSTILE_ROOT/project/dist/WinMice-9.9.9.zip"
 {
+  # The single quotes are the point: this fixture has to reach the appcast
+  # generator as the literal text `a[i]]>b`, because `]]>` is what closes a
+  # CDATA section early. Taking shellcheck's advice and double-quoting would
+  # make the shell run `a[i]]>b` as a command substitution instead of writing
+  # it, destroying the very input this test exists to feed in.
+  # shellcheck disable=SC2016
   printf -- '- Fixed the `a[i]]>b` comparison.\n'
   printf -- '- Escaped & and < and > correctly.\n'
 } > "$HOSTILE_ROOT/project/docs/changelog-9.9.9.md"
