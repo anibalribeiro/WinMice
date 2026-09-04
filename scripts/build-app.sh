@@ -18,6 +18,12 @@ case "$VERSION" in
   "") echo "Version must be non-empty" >&2; exit 1 ;;
 esac
 
+# EdDSA public key Sparkle uses to verify downloaded updates. Not a secret: it
+# ships inside every copy of the app. Generated once with Sparkle's
+# generate_keys; the matching private key is the SPARKLE_ED_PRIVATE_KEY repo
+# secret. verify-bundle-metadata.sh refuses to pass while this is the placeholder.
+SPARKLE_PUBLIC_ED_KEY="Tmdsz0zEHetxSYorQPZoQVFMEXypDhUl4rKOtf48ZBM="
+
 swift build -c release
 
 APP_DIR="dist/WinMice.app"
@@ -77,6 +83,12 @@ cat > "$CONTENTS/Info.plist" <<PLIST
     <true/>
     <key>NSAccessibilityUsageDescription</key>
     <string>WinMice uses accessibility to bring the window under the cursor forward, post native scroll events, and handle back/forward navigation on your behalf.</string>
+    <key>SUFeedURL</key>
+    <string>https://github.com/anibalribeiro/WinMice/releases/latest/download/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>${SPARKLE_PUBLIC_ED_KEY}</string>
+    <key>SUScheduledCheckInterval</key>
+    <integer>86400</integer>
 </dict>
 </plist>
 PLIST
