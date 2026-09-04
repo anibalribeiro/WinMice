@@ -170,6 +170,17 @@ a real release: the GitHub Release is created as a **prerelease**, so it never
 becomes `releases/latest` and the appcast there is never served to installed
 copies, and the Homebrew cask is left alone. Real releases come from tag pushes.
 
+Do not hand-promote a `manual-*` release by un-checking **Set as pre-release**
+in the GitHub UI. The moment you do, GitHub makes it `latest`, and every
+installed copy's next Sparkle check downloads that test build from
+`releases/latest/download/appcast.xml`. If you need to exercise the real
+`releases/latest/download` path end to end, do it with a throwaway repo or
+accept the blast radius knowingly — the workflow cannot stop a promotion made
+directly in the UI. It does refuse to compound the mistake: a subsequent
+re-run of that workflow for the same tag now checks whether the existing
+release is still a prerelease before uploading, and fails instead of silently
+keeping the promotion.
+
 ## Release checklist
 
 1. Ensure the Apple, Homebrew, and Sparkle prerequisites above are set, and a

@@ -247,17 +247,41 @@ jobs:
           DMG: ${{ steps.sum.outputs.dmg }}
           PRERELEASE: ${{ steps.ver.outputs.prerelease }}
         run: |
+          # A release is `latest` from the moment it is created, and
+          # releases/latest/download/appcast.xml resolves against it — so
+          # creating it before the assets are up leaves the feed 404ing for
+          # every installed copy. A draft is not eligible to be `latest`, so
+          # publish only after every asset is confirmed uploaded.
+          #
+          # appcast.xml is uploaded last on purpose: it names the zip, so the
+          # zip must already be there.
           if gh release view "$TAG" >/dev/null 2>&1; then
+            if [ "$PRERELEASE" = "true" ]; then
+              IS_PRE=$(gh release view "$TAG" --json isPrerelease -q .isPrerelease)
+              if [ "$IS_PRE" != "true" ]; then
+                echo "$TAG already exists as a full release." >&2
+                echo "Refusing to republish a manual run into the latest update feed." >&2
+                exit 1
+              fi
+            fi
             gh release upload "$TAG" "$ZIP" "$DMG" dist/appcast.xml --clobber
-          elif [ "$PRERELEASE" = "true" ]; then
-            gh release create "$TAG" "$ZIP" "$DMG" dist/appcast.xml \
-              --title "WinMice $VERSION" \
-              --notes-file /tmp/release-notes.md \
-              --prerelease
           else
-            gh release create "$TAG" "$ZIP" "$DMG" dist/appcast.xml \
-              --title "WinMice $VERSION" \
-              --notes-file /tmp/release-notes.md
+            if [ "$PRERELEASE" = "true" ]; then
+              gh release create "$TAG" \
+                --draft \
+                --target "$GITHUB_SHA" \
+                --title "WinMice $VERSION" \
+                --notes-file /tmp/release-notes.md \
+                --prerelease
+            else
+              gh release create "$TAG" \
+                --draft \
+                --target "$GITHUB_SHA" \
+                --title "WinMice $VERSION" \
+                --notes-file /tmp/release-notes.md
+            fi
+            gh release upload "$TAG" "$ZIP" "$DMG" dist/appcast.xml --clobber
+            gh release edit "$TAG" --draft=false
           fi
 
       - name: Update Homebrew tap
