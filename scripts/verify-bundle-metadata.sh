@@ -40,4 +40,19 @@ if /usr/libexec/PlistBuddy -c 'Print :SUEnableAutomaticChecks' "$PLIST" >/dev/nu
   fail=1
 fi
 
+# WinMice ships arm64-only, which is a deliberate product decision. Assert the
+# slice so a misconfigured runner or a bad cross-build cannot publish an app
+# that will not launch on the machines the cask installs it on.
+BIN="$APP/Contents/MacOS/WinMice"
+if [ ! -f "$BIN" ]; then
+  echo "app binary missing: $BIN"
+  fail=1
+else
+  ARCHS=$(lipo -archs "$BIN")
+  case " $ARCHS " in
+    *" arm64 "*) ;;
+    *) echo "app binary has no arm64 slice (got '$ARCHS')"; fail=1 ;;
+  esac
+fi
+
 exit "$fail"

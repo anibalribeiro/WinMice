@@ -38,12 +38,29 @@ let package = Package(
                 .unsafeFlags(["-warnings-as-errors"])
             ]
         ),
+        .target(
+            name: "ButtonGate",
+            path: "Sources/ButtonGate",
+            swiftSettings: [
+                .unsafeFlags(["-warnings-as-errors"])
+            ]
+        ),
+        .target(
+            name: "Preferences",
+            dependencies: ["SideButtons"],
+            path: "Sources/Preferences",
+            swiftSettings: [
+                .unsafeFlags(["-warnings-as-errors"])
+            ]
+        ),
         .executableTarget(
             name: "WinMice",
             dependencies: [
                 "SwipeGesturePoster",
                 "ScrollEngine",
                 "SideButtons",
+                "ButtonGate",
+                "Preferences",
                 .product(name: "Sparkle", package: "Sparkle")
             ],
             path: "Sources/WinMice",
@@ -81,6 +98,16 @@ let package = Package(
             name: "SideButtonsTests",
             dependencies: ["SideButtons"],
             path: "Tests/SideButtonsTests"
+        ),
+        .testTarget(
+            name: "ButtonGateTests",
+            dependencies: ["ButtonGate"],
+            path: "Tests/ButtonGateTests"
+        ),
+        .testTarget(
+            name: "PreferencesTests",
+            dependencies: ["Preferences"],
+            path: "Tests/PreferencesTests"
         )
     ]
 )

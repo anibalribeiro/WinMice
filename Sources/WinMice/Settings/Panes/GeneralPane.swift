@@ -1,4 +1,5 @@
 import AppKit
+import Preferences
 import SwiftUI
 
 struct GeneralPane: View {
@@ -26,7 +27,7 @@ struct GeneralPane: View {
             Section("Menu Bar") {
                 Toggle(isOn: $settings.menuBarIconHidden) {
                     Text("Hide the menu bar icon")
-                    Text("WinMice keeps running. Open it again from Finder or Spotlight to bring the icon back.")
+                    Text("WinMice keeps running. Open it again from Finder or Spotlight to bring the icon back. A pending update will show the icon until you dismiss it.")
                 }
             }
 

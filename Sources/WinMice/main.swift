@@ -1,9 +1,11 @@
 @preconcurrency import AppKit
 @preconcurrency import ApplicationServices
+import ButtonGate
+import Preferences
 import ScrollEngine
 
 @MainActor
-private final class WinMiceApp: NSObject, NSApplicationDelegate {
+private final class WinMiceApp: NSObject, NSApplicationDelegate, NSMenuItemValidation {
     /// What became of a middle-button press the tap swallowed.
     private enum MiddlePress {
         /// Still undecided: replayed as an ordinary click if the press ends without scrolling.
@@ -43,6 +45,9 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
     private var lastMiddleReplay: Date?
     /// Mapped navigation buttons currently held down, so their release can be swallowed too.
     private var heldNavigationButtons: Set<Int64> = []
+    /// Latches each press's tap decision so the matching release follows it instead of
+    /// re-deriving from whatever the settings and replay window happen to say at that moment.
+    private var buttonGate = ButtonGate()
 
     private static let middleButton: Int64 = 2
     private static let scrollTick = DispatchTimeInterval.milliseconds(16)
@@ -82,6 +87,16 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
             recorder: recorder,
             updater: updater
         )
+        updater.onPendingUpdateChange = { [weak self] in
+            guard let self else { return }
+            if self.updater.pendingUpdateVersion != nil {
+                self.installStatusItem()
+            } else if self.settings.menuBarIconHidden {
+                self.removeStatusItem()
+            } else {
+                self.applyStatusItemAppearance()
+            }
+        }
 
         configureMainMenu()
         configureMenu()
@@ -172,16 +187,30 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
     }
 
     private func installStatusItem() {
-        guard statusItem == nil else { return }
-        statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        if let button = statusItem?.button {
-            button.image = Self.menuBarIcon()
-            button.image?.isTemplate = true
-            button.target = self
-            button.action = #selector(statusBarButtonClicked(_:))
-            // mouseDown is more reliable than mouseUp for status items, especially alongside an
-            // event tap that also sees mouse events.
-            button.sendAction(on: [.leftMouseDown, .rightMouseDown])
+        if statusItem == nil {
+            statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
+            if let button = statusItem?.button {
+                button.target = self
+                button.action = #selector(statusBarButtonClicked(_:))
+                // mouseDown is more reliable than mouseUp for status items, especially alongside an
+                // event tap that also sees mouse events.
+                button.sendAction(on: [.leftMouseDown, .rightMouseDown])
+            }
+        }
+        applyStatusItemAppearance()
+    }
+
+    /// Badge and tooltip when a scheduled update is waiting. A pending update keeps the item
+    /// installed even if the user hid it; this is only a no-op when there is no status item yet.
+    private func applyStatusItemAppearance() {
+        guard let button = statusItem?.button else { return }
+        let pending = updater.pendingUpdateVersion
+        button.image = Self.menuBarIcon(updatePending: pending != nil)
+        button.image?.isTemplate = true
+        if let pending {
+            button.toolTip = "Update \(pending) available"
+        } else {
+            button.toolTip = nil
         }
     }
 
@@ -192,7 +221,7 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
     }
 
     /// Classic middle-button autoscroll glyph for the menu bar (template image).
-    private static func menuBarIcon() -> NSImage {
+    private static func menuBarIcon(updatePending: Bool = false) -> NSImage {
         let pointSize: CGFloat = 18
         let image = NSImage(size: NSSize(width: pointSize, height: pointSize), flipped: false) { rect in
             let inset = rect.insetBy(dx: 1.25, dy: 1.25)
@@ -233,6 +262,16 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
             down.close()
             down.fill()
 
+            if updatePending {
+                let diameter: CGFloat = 5
+                NSBezierPath(ovalIn: NSRect(
+                    x: rect.maxX - diameter - 0.5,
+                    y: rect.maxY - diameter - 0.5,
+                    width: diameter,
+                    height: diameter
+                )).fill()
+            }
+
             return true
         }
         image.isTemplate = true
@@ -266,6 +305,13 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
         updater.checkForUpdates()
     }
 
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(checkForUpdates) {
+            return updater.canCheckForUpdates
+        }
+        return true
+    }
+
     /// Reopening from Finder or Spotlight is the only way back once the icon is hidden.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
         if settings.menuBarIconHidden {
@@ -290,7 +336,7 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
             buttons[direction] = Int64(settings[button: direction])
         }
 
-        if settings.menuBarIconHidden {
+        if settings.menuBarIconHidden && updater.pendingUpdateVersion == nil {
             removeStatusItem()
         } else {
             installStatusItem()
@@ -376,6 +422,7 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
     private func resetEventState() {
         stopScrolling()
         heldNavigationButtons.removeAll()
+        buttonGate.reset()
         recordedButton = nil
         middlePress = nil
     }
@@ -395,6 +442,12 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
 
         if consumeForRecording(isDown: isDown, button: button) { return nil }
 
+        if !isDown, heldNavigationButtons.contains(button) {
+            // The press was swallowed under the mapping in force at the time. Honor that record
+            // rather than the current mapping, which may have changed while the button was held.
+            return handleNavigationButton(navigation.direction(for: button), button: button, isDown: isDown)
+        }
+
         if navigation.enabled, let direction = navigation.direction(for: button) {
             return handleNavigationButton(direction, button: button, isDown: isDown)
         }
@@ -407,7 +460,7 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
     /// pointer with an unmatched press or release, and browsers that act on buttons 4 and 5
     /// themselves would navigate a second time on top of the swipe WinMice just sent.
     private func handleNavigationButton(
-        _ direction: NavigationDirection,
+        _ direction: NavigationDirection?,
         button: Int64,
         isDown: Bool
     ) -> Unmanaged<CGEvent>? {
@@ -416,11 +469,14 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
 
         if isDown {
             heldNavigationButtons.insert(button)
-            if navigation.triggerOnMouseDown {
+            if let direction, navigation.triggerOnMouseDown {
                 navigation.perform(direction)
             }
         } else if heldNavigationButtons.remove(button) != nil, !navigation.triggerOnMouseDown {
-            navigation.perform(direction)
+            // Step 9: toggling the feature off mid-hold must not navigate.
+            if let direction, navigation.enabled {
+                navigation.perform(direction)
+            }
         }
         return nil
     }
@@ -431,9 +487,13 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
     /// — a middle click that turns out to be just a click is replayed on release, which is when
     /// apps act on it anyway.
     private func handleMiddleButton(isDown: Bool, event: CGEvent) -> Unmanaged<CGEvent>? {
-        guard !isReplayEcho() else { return Unmanaged.passUnretained(event) }
-
         if isDown {
+            // Latched here rather than re-checked on release: the guard is a 200 ms window, so a
+            // press inside it released after it would otherwise be handed to the app with its
+            // release swallowed.
+            guard buttonGate.press(button: Self.middleButton, action: isReplayEcho() ? .passThrough : .swallow) == .swallow else {
+                return Unmanaged.passUnretained(event)
+            }
             if isActive {
                 // Hold-to-start has latched, so this press is the one that ends it.
                 stopScrolling()
@@ -445,6 +505,9 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
             return nil
         }
 
+        guard buttonGate.release(button: Self.middleButton, fallback: .swallow) == .swallow else {
+            return Unmanaged.passUnretained(event)
+        }
         let press = middlePress
         middlePress = nil
         // Hold-to-scroll ends on release; hold-to-start stays latched until the next press.

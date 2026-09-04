@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-ROOT=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
+ROOT=$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
@@ -154,5 +154,75 @@ if (
 fi
 
 grep -q 'expected exactly one sign_update under .build/artifacts, found 0' "$TMP/zero-stderr"
+
+# A changelog is markdown written by hand, so it can legitimately contain XML
+# metacharacters. `]]>` is the dangerous one: it closes the appcast's CDATA
+# section early and produces invalid XML that Sparkle cannot parse. A broken
+# appcast is the feed every installed copy reads, so this must fail the release
+# rather than publish.
+HOSTILE_ROOT="$TMP/hostile"
+mkdir -p "$HOSTILE_ROOT/project/docs" "$HOSTILE_ROOT/project/dist"
+cp "$ROOT/docs/appcast-template.xml" "$HOSTILE_ROOT/project/docs/appcast-template.xml"
+printf 'zip contents\n' > "$HOSTILE_ROOT/project/dist/WinMice-9.9.9.zip"
+{
+  # The single quotes are the point: this fixture has to reach the appcast
+  # generator as the literal text `a[i]]>b`, because `]]>` is what closes a
+  # CDATA section early. Taking shellcheck's advice and double-quoting would
+  # make the shell run `a[i]]>b` as a command substitution instead of writing
+  # it, destroying the very input this test exists to feed in.
+  # shellcheck disable=SC2016
+  printf -- '- Fixed the `a[i]]>b` comparison.\n'
+  printf -- '- Escaped & and < and > correctly.\n'
+} > "$HOSTILE_ROOT/project/docs/changelog-9.9.9.md"
+
+if ! (
+  cd "$HOSTILE_ROOT/project"
+  "$ROOT/scripts/generate-appcast.sh" 9.9.9 dist/WinMice-9.9.9.zip docs/changelog-9.9.9.md v9.9.9
+) >"$TMP/hostile-stdout" 2>"$TMP/hostile-stderr"; then
+  printf 'generate-appcast failed on a changelog containing XML metacharacters\n' >&2
+  cat "$TMP/hostile-stderr" >&2
+  exit 1
+fi
+
+HOSTILE_OUT="$HOSTILE_ROOT/project/dist/appcast.xml"
+xmllint --noout "$HOSTILE_OUT" || {
+  echo "a changelog containing ]]> produced invalid XML" >&2
+  exit 1
+}
+# The text must survive the escaping, not be dropped or mangled.
+xmllint --xpath 'string(/rss/channel/item/description)' "$HOSTILE_OUT" \
+  | grep -q 'a\[i\]\]>b' || {
+  echo "the ]]> escape lost or corrupted the changelog text" >&2
+  exit 1
+}
+
+# An empty changelog would ship an update dialog with a blank "what's new"
+# panel and equally blank release notes. `-f` accepts an empty file, so the
+# check has to be `-s`.
+: > "$HOSTILE_ROOT/project/docs/empty.md"
+if (
+  cd "$HOSTILE_ROOT/project"
+  "$ROOT/scripts/generate-appcast.sh" 9.9.9 dist/WinMice-9.9.9.zip docs/empty.md v9.9.9
+) >/dev/null 2>&1; then
+  echo "expected generate-appcast to fail on an empty changelog" >&2
+  exit 1
+fi
+
+# A template that would emit malformed XML must be caught even when every
+# placeholder was substituted, because the placeholder guard cannot see it.
+BADTPL_ROOT="$TMP/badtemplate"
+mkdir -p "$BADTPL_ROOT/project/docs" "$BADTPL_ROOT/project/dist"
+printf 'zip contents\n' > "$BADTPL_ROOT/project/dist/WinMice-9.9.9.zip"
+printf -- '- A change.\n' > "$BADTPL_ROOT/project/docs/changelog-9.9.9.md"
+printf '<?xml version="1.0"?>\n<rss><channel><item>{{VERSION}}</item></rss>\n' \
+  > "$BADTPL_ROOT/project/docs/appcast-template.xml"
+if (
+  cd "$BADTPL_ROOT/project"
+  "$ROOT/scripts/generate-appcast.sh" 9.9.9 dist/WinMice-9.9.9.zip docs/changelog-9.9.9.md v9.9.9
+) >/dev/null 2>"$TMP/badtpl-stderr"; then
+  echo "expected generate-appcast to reject a malformed appcast" >&2
+  exit 1
+fi
+grep -q 'not well-formed XML' "$TMP/badtpl-stderr"
 
 printf 'generate-appcast test passed\n'

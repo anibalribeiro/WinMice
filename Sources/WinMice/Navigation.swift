@@ -1,41 +1,8 @@
 import ApplicationServices
-import SideButtons
+import Preferences
 import SwipeGesturePoster
 
-enum NavigationMethod: String, Hashable, CaseIterable, Identifiable, PreferenceRepresentable {
-    case swipe
-    case keyboard
-
-    var id: Self { self }
-}
-
-enum NavigationDirection: Hashable, CaseIterable, Identifiable {
-    case back
-    case forward
-
-    var id: Self { self }
-
-    var opposite: NavigationDirection {
-        switch self {
-        case .back: .forward
-        case .forward: .back
-        }
-    }
-
-    var title: String {
-        switch self {
-        case .back: "Back"
-        case .forward: "Forward"
-        }
-    }
-
-    var defaultButton: Int {
-        switch self {
-        case .back: SideButtons.defaultBack
-        case .forward: SideButtons.defaultForward
-        }
-    }
-
+extension NavigationDirection {
     var swipeDirection: SwipeNavigationDirection {
         switch self {
         case .back: .back

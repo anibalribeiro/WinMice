@@ -149,6 +149,13 @@ them forward, and `brew upgrade` will try to reinstall over a newer app.
 `scripts/update-homebrew-cask.sh` only rewrites `version` and `sha256`, so this
 is a one-time manual commit rather than something the pipeline does.
 
+### 4. Restrict the cask to Apple Silicon (once)
+
+The cask must declare `depends_on arch: :arm64` so `brew install --cask winmice`
+refuses to install on an Intel Mac rather than installing an app that cannot launch.
+This lives in the tap repo and is not touched by `update-homebrew-cask.sh`; add it
+once, by hand, in `Casks/winmice.rb`.
+
 ## Dry-run before the first real tag
 
 After secrets are set, prove the pipeline **without** publishing a GitHub
@@ -169,6 +176,17 @@ A manual run tags `manual-<version>` rather than `v<version>`. If you do check
 a real release: the GitHub Release is created as a **prerelease**, so it never
 becomes `releases/latest` and the appcast there is never served to installed
 copies, and the Homebrew cask is left alone. Real releases come from tag pushes.
+
+Do not hand-promote a `manual-*` release by un-checking **Set as pre-release**
+in the GitHub UI. The moment you do, GitHub makes it `latest`, and every
+installed copy's next Sparkle check downloads that test build from
+`releases/latest/download/appcast.xml`. If you need to exercise the real
+`releases/latest/download` path end to end, do it with a throwaway repo or
+accept the blast radius knowingly — the workflow cannot stop a promotion made
+directly in the UI. It does refuse to compound the mistake: a subsequent
+re-run of that workflow for the same tag now checks whether the existing
+release is still a prerelease before uploading, and fails instead of silently
+keeping the promotion.
 
 ## Release checklist
 
@@ -197,6 +215,13 @@ copies, and the Homebrew cask is left alone. Real releases come from tag pushes.
    ```bash
    ./scripts/package-dmg.sh 1.1.0
    ```
+
+   The release workflow's `Test` step now runs `swift test` and the
+   `test-*.sh` script suite itself, before any signing secret is imported —
+   a tag on a commit that never went green fails there in seconds instead of
+   producing a signed, notarized release. This local run is therefore a
+   convenience that surfaces failures before you push a tag, not the only
+   gate.
 
 4. Commit/push any pending release notes or docs on `main`.
 

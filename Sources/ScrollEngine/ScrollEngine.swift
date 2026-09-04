@@ -15,10 +15,20 @@ public struct ScrollEngine {
     /// Pixels scrolled per tick one point past the dead zone, before the user's speed preference.
     public static let baseSpeed: CGFloat = 0.10
 
+    /// Bounds for `speed`, matching the 25–300% the Settings slider offers. A value outside this
+    /// range can only come from a stale or hand-edited preference, and honoring one would either
+    /// invert scrolling or overflow the wheel delta.
+    public static let minSpeed = baseSpeed * 0.25
+    public static let maxSpeed = baseSpeed * 3
+
     /// Pointer distance from the anchor, in points, that scrolls nothing.
     public var deadZone: CGFloat = 12
     /// Pixels scrolled per tick one point past the dead zone.
-    public var speed = baseSpeed
+    public var speed: CGFloat {
+        get { storedSpeed }
+        set { storedSpeed = newValue.isFinite ? min(max(newValue, Self.minSpeed), Self.maxSpeed) : Self.baseSpeed }
+    }
+    private var storedSpeed = baseSpeed
     /// Inverts the vertical wheel delta, so dragging down scrolls up.
     public var reverseVertical = false
     /// Inverts the horizontal wheel delta, so dragging right scrolls left.
@@ -26,7 +36,9 @@ public struct ScrollEngine {
     /// Exponent on the distance past the dead zone. Above 1 this buys fine control near the anchor
     /// at the cost of a steeper ramp further out.
     var acceleration: CGFloat = 1.35
-    /// Ceiling for one tick, so a pointer flung at the edge of the screen stays controllable.
+    /// Ceiling for one tick at the default speed, so a pointer flung at the edge of the screen
+    /// stays controllable. Scaled by the user's speed preference, so raising Speed raises the top
+    /// speed rather than only moving the knee closer to the anchor.
     var maxDeltaPerTick: CGFloat = 130
 
     private var remainder = CGVector.zero
@@ -46,7 +58,8 @@ public struct ScrollEngine {
             return nil
         }
 
-        let magnitude = min(speed * pow(distance - deadZone, acceleration), maxDeltaPerTick)
+        let ceiling = maxDeltaPerTick * speed / Self.baseSpeed
+        let magnitude = min(max(speed * pow(distance - deadZone, acceleration), -ceiling), ceiling)
         // Positive wheel1 scrolls up and positive wheel2 scrolls left, so the vertical offset maps
         // straight across and the horizontal one inverts. The reverse flags flip either axis on top
         // of that, before the remainder is added, so the carryover stays in the same sign
@@ -57,7 +70,11 @@ public struct ScrollEngine {
         let steps = CGVector(dx: horizontal.rounded(.towardZero), dy: vertical.rounded(.towardZero))
         remainder = CGVector(dx: horizontal - steps.dx, dy: vertical - steps.dy)
 
+        guard steps.dx.isFinite, steps.dy.isFinite else {
+            reset()
+            return nil
+        }
         guard steps.dx != 0 || steps.dy != 0 else { return nil }
-        return (vertical: Int32(steps.dy), horizontal: Int32(steps.dx))
+        return (vertical: Int32(clamping: Int(steps.dy)), horizontal: Int32(clamping: Int(steps.dx)))
     }
 }

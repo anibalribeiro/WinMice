@@ -19,6 +19,9 @@ The app appears in the macOS menu bar. Open **Settings…** (⌘,) from the menu
 
 Download the latest release from [GitHub Releases](https://github.com/anibalribeiro/WinMice/releases/latest):
 
+**Requires an Apple Silicon Mac (M1 or later) running macOS 14 or later.** WinMice ships
+as an arm64-only build and will not launch on Intel Macs.
+
 1. Download `WinMice-<version>.dmg`, open it, and drag **WinMice** to **Applications**.
 2. Open WinMice from Applications.
 3. Grant **Accessibility** when prompted (Settings → Permissions in the app).
@@ -42,11 +45,13 @@ Developer ID identity.
 
 ### Updates
 
-WinMice asks, shortly after you first run it, whether it may check for updates.
+WinMice asks on the second launch whether it may check for updates.
 If you agree it checks once a day, shows you what changed, and installs the
 update only when you say so. You can change your mind any time in
 **Settings → General → Updates**, or check on demand with **Check for
-Updates…** in the menu bar menu.
+Updates…** in the menu bar menu. Until you answer that prompt, the toggle
+there reads off — that is Sparkle waiting for permission, not updates being
+disabled.
 
 Homebrew users can keep using `brew upgrade --cask winmice` instead.
 
@@ -89,7 +94,8 @@ browsers do — navigate once rather than twice.
 ### General
 
 - **Launch at login** and **hide menu bar icon** (reopen the app to restore the icon).
-- **Restore Defaults** puts every setting back to how it shipped.
+- **Restore Defaults** puts scrolling, buttons, and menu bar settings back the way they
+  shipped. Opening at login and the update-check preference are left as they are.
 - All settings are saved between launches.
 
 A middle click is held back until WinMice knows what it was: a press that ends without scrolling is
@@ -151,6 +157,10 @@ used for nothing else.
 Any mouse with a middle button works for scrolling. For back/forward you need a mouse with extra
 side buttons — Logitech, Razer, Corsair, SteelSeries, and generic USB mice all report them the same
 way. You can map any button the mouse reports, not just 4 and 5.
+
+**Does WinMice run on Intel Macs?**
+No. WinMice is built for Apple Silicon only, so it needs an M1 or later Mac. There is no
+Intel build, and the Intel Macs that run macOS 14 are not supported.
 
 **Is it a Windows program?**
 No. WinMice is a macOS app; the name refers to the Windows mouse behavior it reproduces. It is

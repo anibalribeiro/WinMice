@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - "v*.*.*"
+      - "v[0-9]*.[0-9]*.[0-9]*"
   workflow_dispatch:
     inputs:
       publish:
@@ -17,6 +17,16 @@ on:
 
 permissions:
   contents: write
+
+# Two tag pushes must not race each other into the Homebrew tap push, and a
+# half-finished release must not be cancelled partway through notarization.
+concurrency:
+  group: release
+  cancel-in-progress: false
+  # Default queueing is `queue: single`, which cancels an already-pending run
+  # when a new one is queued — so three rapid tag pushes silently drop the
+  # middle release even with cancel-in-progress: false.
+  queue: max
 
 jobs:
   release:
@@ -45,16 +55,23 @@ jobs:
               v*) VERSION="${TAG#v}" ;;
               *) echo "Tag must start with v" >&2; exit 1 ;;
             esac
+            # A tag push publishes a non-prerelease, which GitHub makes
+            # `latest`, which is the appcast feed every installed copy reads.
+            # The glob above cannot express "three numeric components", so the
+            # shape is enforced here.
+            ./scripts/validate-release-version.sh "$VERSION"
             PUBLISH=true
             PRERELEASE=false
           fi
           case "$VERSION" in
             "") echo "Version must be non-empty" >&2; exit 1 ;;
           esac
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
-          echo "publish=$PUBLISH" >> "$GITHUB_OUTPUT"
-          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+          {
+            echo "version=$VERSION"
+            echo "tag=$TAG"
+            echo "publish=$PUBLISH"
+            echo "prerelease=$PRERELEASE"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Require a changelog for this version
         env:
@@ -62,11 +79,22 @@ jobs:
         run: |
           # Both the release notes and the Sparkle appcast are generated from this
           # file. Checking it here fails in seconds instead of after notarization.
-          if [ ! -f "docs/changelog/${VERSION}.md" ]; then
-            echo "Missing docs/changelog/${VERSION}.md" >&2
+          if [ ! -s "docs/changelog/${VERSION}.md" ]; then
+            echo "Missing or empty docs/changelog/${VERSION}.md" >&2
             echo "Write the changelog first; the release notes and the appcast both come from it." >&2
             exit 1
           fi
+
+      - name: Test
+        run: |
+          # A tag is not a branch, so ci.yml never runs on this ref. Without
+          # this step a tag on a commit whose CI failed still ships a signed,
+          # notarized, published release.
+          swift test
+          ./scripts/test-validate-release-version.sh
+          ./scripts/test-generate-appcast.sh
+          ./scripts/test-package-dmg-fallback.sh
+          ./scripts/test-build-signing-mode.sh
 
       - name: Require signing secrets
         env:
@@ -89,6 +117,16 @@ jobs:
             fi
           done
           exit "$missing"
+
+      # Installed before the signing key is imported: brew runs current-HEAD
+      # formula code, and after the import the keychain is unlocked with the
+      # Developer ID key authorized for codesign without a prompt.
+      - name: Install create-dmg
+        run: |
+          # Homebrew has no versioned create-dmg formula; log the resolved version for reproducibility.
+          brew install create-dmg
+          command -v create-dmg
+          create-dmg --version
 
       - name: Import Developer ID certificate
         id: cert
@@ -116,6 +154,8 @@ jobs:
         run: ./scripts/verify-bundle-metadata.sh dist/WinMice.app "$VERSION"
 
       - name: Verify Sparkle embedding
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: ./scripts/verify-sparkle-embedding.sh dist/WinMice.app
 
       - name: Notarize app
@@ -140,14 +180,9 @@ jobs:
       - name: Verify packaged zip
         env:
           ZIP: ${{ steps.pkg.outputs.zip }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          WINMICE_EXPECT_NOTARIZED: "1"
         run: ./scripts/verify-packaged-zip.sh "$ZIP"
-
-      - name: Install create-dmg
-        run: |
-          # Homebrew has no versioned create-dmg formula; log the resolved version for reproducibility.
-          brew install create-dmg
-          command -v create-dmg
-          create-dmg --version
 
       - name: Package DMG
         env:
@@ -186,9 +221,11 @@ jobs:
           ZIP="dist/WinMice-${VERSION}.zip"
           DMG="dist/WinMice-${VERSION}.dmg"
           SHA=$(shasum -a 256 "$DMG" | awk '{print $1}')
-          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
-          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
-          echo "dmg=$DMG" >> "$GITHUB_OUTPUT"
+          {
+            echo "sha256=$SHA"
+            echo "zip=$ZIP"
+            echo "dmg=$DMG"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Generate appcast
         env:
@@ -231,17 +268,62 @@ jobs:
           DMG: ${{ steps.sum.outputs.dmg }}
           PRERELEASE: ${{ steps.ver.outputs.prerelease }}
         run: |
+          # A release is `latest` from the moment it is published, and
+          # releases/latest/download/appcast.xml resolves against it — so
+          # publishing before the assets are up leaves the feed 404ing for
+          # every installed copy. A draft is not eligible to be `latest`, so
+          # publish only after every asset is confirmed uploaded.
+          #
+          # appcast.xml goes up in a second, separate call because
+          # `gh release upload` uploads its arguments concurrently (five
+          # workers), so argument order guarantees nothing. The appcast names
+          # the zip, so the zip has to be up first — and on the clobber path
+          # the release is already live, where `--clobber` deletes each old
+          # asset before uploading its replacement.
+          upload_assets() {
+            gh release upload "$TAG" "$ZIP" "$DMG" --clobber
+            gh release upload "$TAG" dist/appcast.xml --clobber
+          }
+
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$ZIP" "$DMG" dist/appcast.xml --clobber
-          elif [ "$PRERELEASE" = "true" ]; then
-            gh release create "$TAG" "$ZIP" "$DMG" dist/appcast.xml \
-              --title "WinMice $VERSION" \
-              --notes-file /tmp/release-notes.md \
-              --prerelease
+            if [ "$PRERELEASE" = "true" ]; then
+              IS_PRE=$(gh release view "$TAG" --json isPrerelease -q .isPrerelease)
+              if [ "$IS_PRE" != "true" ]; then
+                echo "$TAG already exists as a full release." >&2
+                echo "Refusing to republish a manual run into the latest update feed." >&2
+                exit 1
+              fi
+            fi
+            upload_assets
           else
-            gh release create "$TAG" "$ZIP" "$DMG" dist/appcast.xml \
-              --title "WinMice $VERSION" \
-              --notes-file /tmp/release-notes.md
+            if [ "$PRERELEASE" = "true" ]; then
+              gh release create "$TAG" \
+                --draft \
+                --target "$GITHUB_SHA" \
+                --title "WinMice $VERSION" \
+                --notes-file /tmp/release-notes.md \
+                --prerelease
+            else
+              gh release create "$TAG" \
+                --draft \
+                --target "$GITHUB_SHA" \
+                --title "WinMice $VERSION" \
+                --notes-file /tmp/release-notes.md
+            fi
+            upload_assets
+          fi
+
+          # Runs on both paths. `gh release view` resolves drafts, so a run
+          # that died between creating the draft and publishing it would send
+          # the next re-run down the clobber path, which would upload into a
+          # release that nothing ever publishes — stranding it as a draft that
+          # can only be fixed by hand. Re-asserting --prerelease here rather
+          # than relying on the edit endpoint leaving it alone also restores
+          # the flag on a re-run, which is the other half of this task.
+          if [ "$PRERELEASE" = "true" ]; then
+            gh release edit "$TAG" --draft=false --prerelease
+          else
+            gh release edit "$TAG" --draft=false
           fi
 
       - name: Update Homebrew tap

@@ -1,0 +1,8 @@
+paths:
+  .github/workflows/release.yml:
+    ignore:
+      # actionlint 1.7.12 predates GitHub's `queue:` concurrency key (shipped
+      # 2026-05-07) and 1.7.12 is the newest release, so there is no version to
+      # bump to. Remove this waiver, and the file if it is then empty, once a
+      # release recognises the key.
+      - 'unexpected key "queue" for "concurrency" section'

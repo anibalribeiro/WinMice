@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-ROOT="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
+ROOT="$(CDPATH='' cd -- "$(dirname "$0")/.." && pwd)"
 HTML="$ROOT/docs/index.html"
 CSS="$ROOT/docs/styles.css"
 fail=0

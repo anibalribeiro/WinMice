@@ -1,4 +1,5 @@
 import AppKit
+import Preferences
 import SwiftUI
 
 /// Hosts the settings UI. The window itself is the only AppKit state here: everything below is
