@@ -2,7 +2,7 @@
 
 <img src="docs/icon.png" alt="WinMice icon" width="128" height="128">
 
-A tiny native macOS menu-bar utility that brings Windows-style mouse behavior to Mac: vector scrolling on middle-click and configurable back/forward side buttons. Built on Swift and AppKit with no Electron or bundled runtimes. Ships as a ~600 KB app, runs as a single lightweight process, and uses negligible CPU and memory while idle.
+A tiny native macOS menu-bar utility that brings Windows-style mouse behavior to Mac: vector scrolling on middle-click and configurable back/forward side buttons. Built on Swift and AppKit with no Electron and no interpreted runtime. Ships as a ~4 MB download — the app itself is under 1 MB, plus the Sparkle framework that delivers updates — runs as a single lightweight process, and uses negligible CPU and memory while idle.
 
 **[Product site](https://anibalribeiro.cz/Winmice/)** — screenshots and a quick demo loop.
 
@@ -32,6 +32,20 @@ Upgrading from an older **ad-hoc** (unsigned) release: remove every WinMice
 row under **System Settings → Privacy & Security → Accessibility**, then
 re-enable `/Applications/WinMice.app` once. Later notarized updates keep that
 Developer ID identity.
+
+### Updates
+
+WinMice asks, shortly after you first run it, whether it may check for updates.
+If you agree it checks once a day, shows you what changed, and installs the
+update only when you say so. You can change your mind any time in
+**Settings → General → Updates**, or check on demand with **Check for
+Updates…** in the menu bar menu.
+
+Homebrew users can keep using `brew upgrade --cask winmice` instead.
+
+Coming from 1.0.0, this one upgrade has to be done by hand — 1.0.0 has no
+updater to tell it about anything newer. Every release after this one can
+update itself.
 
 ## Use
 
