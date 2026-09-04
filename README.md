@@ -19,6 +19,9 @@ The app appears in the macOS menu bar. Open **Settings…** (⌘,) from the menu
 
 Download the latest release from [GitHub Releases](https://github.com/anibalribeiro/WinMice/releases/latest):
 
+**Requires an Apple Silicon Mac (M1 or later) running macOS 14 or later.** WinMice ships
+as an arm64-only build and will not launch on Intel Macs.
+
 1. Download `WinMice-<version>.dmg`, open it, and drag **WinMice** to **Applications**.
 2. Open WinMice from Applications.
 3. Grant **Accessibility** when prompted (Settings → Permissions in the app).
@@ -151,6 +154,10 @@ used for nothing else.
 Any mouse with a middle button works for scrolling. For back/forward you need a mouse with extra
 side buttons — Logitech, Razer, Corsair, SteelSeries, and generic USB mice all report them the same
 way. You can map any button the mouse reports, not just 4 and 5.
+
+**Does WinMice run on Intel Macs?**
+No. WinMice is built for Apple Silicon only, so it needs an M1 or later Mac. There is no
+Intel build, and the Intel Macs that run macOS 14 are not supported.
 
 **Is it a Windows program?**
 No. WinMice is a macOS app; the name refers to the Windows mouse behavior it reproduces. It is

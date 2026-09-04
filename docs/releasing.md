@@ -149,6 +149,13 @@ them forward, and `brew upgrade` will try to reinstall over a newer app.
 `scripts/update-homebrew-cask.sh` only rewrites `version` and `sha256`, so this
 is a one-time manual commit rather than something the pipeline does.
 
+### 4. Restrict the cask to Apple Silicon (once)
+
+The cask must declare `depends_on arch: :arm64` so `brew install --cask winmice`
+refuses to install on an Intel Mac rather than installing an app that cannot launch.
+This lives in the tap repo and is not touched by `update-homebrew-cask.sh`; add it
+once, by hand, in `Casks/winmice.rb`.
+
 ## Dry-run before the first real tag
 
 After secrets are set, prove the pipeline **without** publishing a GitHub
