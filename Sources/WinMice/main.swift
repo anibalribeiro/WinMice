@@ -431,7 +431,8 @@ private final class WinMiceApp: NSObject, NSApplicationDelegate {
                 navigation.perform(direction)
             }
         } else if heldNavigationButtons.remove(button) != nil, !navigation.triggerOnMouseDown {
-            if let direction {
+            // Step 9: toggling the feature off mid-hold must not navigate.
+            if let direction, navigation.enabled {
                 navigation.perform(direction)
             }
         }
