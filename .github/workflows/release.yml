@@ -173,9 +173,7 @@ jobs:
         if: steps.ver.outputs.publish == 'true'
         env:
           VERSION: ${{ steps.ver.outputs.version }}
-        run: |
-          sed "s/{{VERSION}}/${VERSION}/g" \
-            docs/release-notes-template.md > /tmp/release-notes.md
+        run: ./scripts/render-release-notes.sh "$VERSION" > /tmp/release-notes.md
 
       - name: Publish GitHub Release
         if: steps.ver.outputs.publish == 'true'
