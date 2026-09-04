@@ -45,11 +45,13 @@ Developer ID identity.
 
 ### Updates
 
-WinMice asks, shortly after you first run it, whether it may check for updates.
+WinMice asks on the second launch whether it may check for updates.
 If you agree it checks once a day, shows you what changed, and installs the
 update only when you say so. You can change your mind any time in
 **Settings → General → Updates**, or check on demand with **Check for
-Updates…** in the menu bar menu.
+Updates…** in the menu bar menu. Until you answer that prompt, the toggle
+there reads off — that is Sparkle waiting for permission, not updates being
+disabled.
 
 Homebrew users can keep using `brew upgrade --cask winmice` instead.
 
@@ -92,7 +94,8 @@ browsers do — navigate once rather than twice.
 ### General
 
 - **Launch at login** and **hide menu bar icon** (reopen the app to restore the icon).
-- **Restore Defaults** puts every setting back to how it shipped.
+- **Restore Defaults** puts scrolling, buttons, and menu bar settings back the way they
+  shipped. Opening at login and the update-check preference are left as they are.
 - All settings are saved between launches.
 
 A middle click is held back until WinMice knows what it was: a press that ends without scrolling is
