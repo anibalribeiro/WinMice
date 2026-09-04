@@ -41,6 +41,20 @@ do
     echo "$nested: expected Developer ID Application identity"
     fail=1
   }
+  # Every other check here only detects the *absence* of a proper signature, so
+  # none of them can tell our signature apart from anyone else's Developer ID.
+  # The team identifier is the only field that positively identifies ours. That
+  # matters because build-app.sh hardcodes Versions/B and skips missing paths:
+  # if Sparkle restructures, its nested signing loop signs nothing and the app
+  # signature then seals code we never signed. The pinned 2.9.6 SwiftPM artifact
+  # ships ad-hoc, so the checks above happen to catch that case today; this one
+  # keeps catching it if a future artifact arrives already Developer ID signed.
+  if [ -n "${APPLE_TEAM_ID:-}" ]; then
+    printf '%s\n' "$INFO" | grep -q "^TeamIdentifier=${APPLE_TEAM_ID}$" || {
+      echo "$nested: expected TeamIdentifier=${APPLE_TEAM_ID}, got: $(printf '%s\n' "$INFO" | grep '^TeamIdentifier=' || echo 'none')"
+      fail=1
+    }
+  fi
   printf '%s\n' "$INFO" | grep -q 'flags=.*runtime' || {
     echo "$nested: expected hardened runtime"
     fail=1

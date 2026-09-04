@@ -132,6 +132,8 @@ jobs:
         run: ./scripts/verify-bundle-metadata.sh dist/WinMice.app "$VERSION"
 
       - name: Verify Sparkle embedding
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: ./scripts/verify-sparkle-embedding.sh dist/WinMice.app
 
       - name: Notarize app
@@ -156,6 +158,8 @@ jobs:
       - name: Verify packaged zip
         env:
           ZIP: ${{ steps.pkg.outputs.zip }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          WINMICE_EXPECT_NOTARIZED: "1"
         run: ./scripts/verify-packaged-zip.sh "$ZIP"
 
       - name: Install create-dmg

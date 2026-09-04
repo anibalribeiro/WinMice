@@ -100,6 +100,7 @@ if [ -n "${CODESIGN_IDENTITY:-}" ]; then
   # their hashes. They deliberately do NOT get WinMice's entitlements: the
   # accessibility grant belongs to the app alone.
   SPARKLE_VERSIONED="$FRAMEWORKS/Sparkle.framework/Versions/B"
+  signed_nested=0
   for nested in \
     "$SPARKLE_VERSIONED"/XPCServices/*.xpc \
     "$SPARKLE_VERSIONED/Updater.app" \
@@ -110,7 +111,18 @@ if [ -n "${CODESIGN_IDENTITY:-}" ]; then
     codesign --force --options runtime --timestamp \
       --sign "$CODESIGN_IDENTITY" \
       "$nested"
+    signed_nested=$((signed_nested + 1))
   done
+
+  # Every path above is a glob or a hardcoded version directory. If Sparkle
+  # changes its layout they match nothing, the loop signs nothing, and the app
+  # signature then seals vendor-signed code. Fail instead of shipping that.
+  # The pinned layout has two XPC services, Updater.app and Autoupdate, plus
+  # the framework itself.
+  [ "$signed_nested" -ge 5 ] || {
+    echo "signed only $signed_nested nested Sparkle items; the framework layout changed" >&2
+    exit 1
+  }
 
   # --timestamp requests a secure timestamp explicitly; notarization requires
   # one, and codesign's unspecified default may skip it on some signatures.

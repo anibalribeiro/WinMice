@@ -24,7 +24,16 @@ if [ -d "$APP" ]; then
   }
 fi
 
-./scripts/verify-sparkle-embedding.sh "$APP" || fail=1
+HERE=$(CDPATH= cd -- "$(dirname "$0")" && pwd)
+
+"$HERE/verify-sparkle-embedding.sh" "$APP" || fail=1
+
+# The zip — not the DMG — is what Sparkle downloads and installs, so it should
+# not have a weaker gate than the DMG does. ci.yml packages an ad-hoc build,
+# which cannot be notarized, so the release workflow opts in explicitly.
+if [ "${WINMICE_EXPECT_NOTARIZED:-0}" = "1" ]; then
+  "$HERE/verify-notarized-app.sh" "$APP" || fail=1
+fi
 
 if [ "$fail" -eq 0 ]; then
   echo "Verified packaged zip: $ZIP"
