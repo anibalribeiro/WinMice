@@ -46,6 +46,13 @@ let package = Package(
             ]
         ),
         .target(
+            name: "WindowHitTest",
+            path: "Sources/WindowHitTest",
+            swiftSettings: [
+                .unsafeFlags(["-warnings-as-errors"])
+            ]
+        ),
+        .target(
             name: "Preferences",
             dependencies: ["SideButtons"],
             path: "Sources/Preferences",
@@ -61,6 +68,7 @@ let package = Package(
                 "SideButtons",
                 "ButtonGate",
                 "Preferences",
+                "WindowHitTest",
                 .product(name: "Sparkle", package: "Sparkle")
             ],
             path: "Sources/WinMice",
@@ -103,6 +111,11 @@ let package = Package(
             name: "ButtonGateTests",
             dependencies: ["ButtonGate"],
             path: "Tests/ButtonGateTests"
+        ),
+        .testTarget(
+            name: "WindowHitTestTests",
+            dependencies: ["WindowHitTest"],
+            path: "Tests/WindowHitTestTests"
         ),
         .testTarget(
             name: "PreferencesTests",
