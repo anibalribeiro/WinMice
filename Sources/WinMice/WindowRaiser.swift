@@ -16,7 +16,17 @@ enum WindowRaiser {
     private static let maxAncestorHops = 10
 
     /// - Parameter point: Pointer location in Core Graphics screen coordinates (origin top left).
+    @MainActor
     static func raiseWindow(at point: CGPoint) {
+        // An Accessibility query that lands on one of our own windows is answered in-process, on the
+        // calling thread, by walking SwiftUI's view tree — which is main-actor only and traps when
+        // reached from the background queue. Our own windows don't need the Accessibility API anyway.
+        if let window = ownWindow(at: point) {
+            NSApp.activate()
+            window.orderFront(nil)
+            return
+        }
+
         queue.async {
             guard AXIsProcessTrusted(), let element = element(at: point) else { return }
 
@@ -27,6 +37,25 @@ enum WindowRaiser {
                 }
             }
             raise(element)
+        }
+    }
+
+    /// The window of ours that is frontmost under `point`, looking through click-through windows such
+    /// as the scroll indicator, or `nil` when another app's window (or none) is there.
+    @MainActor
+    private static func ownWindow(at point: CGPoint) -> NSWindow? {
+        // Cocoa screen coordinates have their origin at the bottom left of the primary screen.
+        guard let primary = NSScreen.screens.first else { return nil }
+        let location = NSPoint(x: point.x, y: primary.frame.maxY - point.y)
+
+        var below = 0
+        while true {
+            let number = NSWindow.windowNumber(at: location, belowWindowWithWindowNumber: below)
+            guard number > 0, number != below, let window = NSApp.window(withWindowNumber: number) else {
+                return nil
+            }
+            if !window.ignoresMouseEvents { return window }
+            below = number
         }
     }
 
